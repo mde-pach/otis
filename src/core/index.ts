@@ -1,4 +1,5 @@
 export * from "./cluster";
+export * from "./draft";
 export * from "./diff";
 export * from "./duplicates";
 export * from "./embedding-grouper";
@@ -6,6 +7,8 @@ export * from "./label";
 export * from "./ports";
 export * from "./project";
 export * from "./provenance";
+export * from "./review";
+export * from "./reword";
 export * from "./similarity";
 export * from "./skeletons";
 export * from "./split";
