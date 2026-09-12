@@ -1,0 +1,26 @@
+---
+import App from "../ui/App";
+import "../styles/app.css";
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Otis</title>
+		<meta
+			name="description"
+			content="Turn a pile of notes into an article. Your writing is the source of truth."
+		/>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			rel="stylesheet"
+			href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+		/>
+	</head>
+	<body>
+		<App client:only="solid-js" />
+	</body>
+</html>
