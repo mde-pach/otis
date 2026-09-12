@@ -34,7 +34,10 @@ describe("deriveState", () => {
 	});
 
 	test("editing after accepting a reword falls back to edited", () => {
-		const b = block({ text: "A reworded line, then mine.", acceptedRewordText: "A reworded line." });
+		const b = block({
+			text: "A reworded line, then mine.",
+			acceptedRewordText: "A reworded line.",
+		});
 		expect(deriveState(b, fragment())).toBe("edited");
 	});
 
