@@ -7,7 +7,7 @@
  * fragments, and nothing above it changes. Same for Labeler.
  */
 
-import type { Vector } from "./similarity";
+import type { SimilarityStats, Vector } from "./similarity";
 import type { Fragment, Group, Project } from "./types";
 
 export interface Embedder {
@@ -22,6 +22,21 @@ export interface GroupProposal {
 	ungroupedFragmentIds: string[];
 	/** How this proposal was produced, shown to the writer verbatim. */
 	rationale: string;
+	/** Everything needed to argue with the result rather than just accept it. */
+	diagnostics?: GroupDiagnostics;
+}
+
+export interface GroupDiagnostics {
+	embedderId: string;
+	centred: boolean;
+	cutScore: number;
+	/** Similarities as the embedder produced them — the duplicate threshold lives here. */
+	rawSimilarity: SimilarityStats;
+	/** Similarities the clustering actually saw. A narrow spread explains a bad grouping. */
+	clusteringSimilarity: SimilarityStats;
+	/** Every merge score, highest first. The shape of the tree. */
+	mergeScores: number[];
+	fragmentIds: string[];
 }
 
 export interface Grouper {

@@ -33,7 +33,10 @@ describe("createEmbeddingGrouper", () => {
 	];
 
 	test("proposes groups along the poles", async () => {
-		const grouper = createEmbeddingGrouper({ embedder: fakeEmbedder, threshold: 0.9 });
+		const grouper = createEmbeddingGrouper({
+			embedder: fakeEmbedder,
+			cut: { kind: "target", groups: 2 },
+		});
 		const proposal = await grouper.propose(fragments);
 		expect(proposal.groups).toHaveLength(2);
 		const sets = proposal.groups.map((g) => g.fragmentIds.sort().join(","));
@@ -41,7 +44,10 @@ describe("createEmbeddingGrouper", () => {
 	});
 
 	test("marks proposals as auto and labels them from their own words", async () => {
-		const grouper = createEmbeddingGrouper({ embedder: fakeEmbedder, threshold: 0.9 });
+		const grouper = createEmbeddingGrouper({
+			embedder: fakeEmbedder,
+			cut: { kind: "target", groups: 2 },
+		});
 		const { groups } = await grouper.propose(fragments);
 		expect(groups.every((g) => g.auto)).toBe(true);
 		expect(groups.some((g) => g.label.includes("cache"))).toBe(true);
@@ -50,7 +56,7 @@ describe("createEmbeddingGrouper", () => {
 	test("leaves undersized clusters ungrouped instead of inventing a theme", async () => {
 		const grouper = createEmbeddingGrouper({
 			embedder: fakeEmbedder,
-			threshold: 0.9,
+			cut: { kind: "target", groups: 2 },
 			minClusterSize: 3,
 		});
 		const proposal = await grouper.propose(fragments);
@@ -58,8 +64,17 @@ describe("createEmbeddingGrouper", () => {
 		expect(proposal.ungroupedFragmentIds.sort()).toEqual(["f01", "f02", "f03", "f04"]);
 	});
 
+	test("reports the numbers behind the grouping", async () => {
+		const grouper = createEmbeddingGrouper({ embedder: fakeEmbedder });
+		const { diagnostics } = await grouper.propose(fragments);
+		expect(diagnostics?.centred).toBe(true);
+		expect(diagnostics?.mergeScores).toHaveLength(fragments.length - 1);
+		expect(diagnostics?.rawSimilarity.pairs).toBe(6);
+		expect(diagnostics?.fragmentIds).toEqual(["f01", "f02", "f03", "f04"]);
+	});
+
 	test("states how the proposal was produced", async () => {
-		const grouper = createEmbeddingGrouper({ embedder: fakeEmbedder, threshold: 0.6 });
+		const grouper = createEmbeddingGrouper({ embedder: fakeEmbedder });
 		const { rationale } = await grouper.propose(fragments);
 		expect(rationale).toContain("fake");
 	});
