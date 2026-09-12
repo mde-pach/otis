@@ -119,6 +119,7 @@ src/
   ui/            Solid island: Notes, Article, Shape, Peek
   pages/         Astro shell
 fixtures/        a fixed pile of notes to run changes against
+scripts/         the layout check
 ```
 
 ## Commands
@@ -129,8 +130,18 @@ bun run dev       # http://localhost:4321/otis/
 bun test          # core domain, no browser needed
 bun run lint      # biome
 bun run format    # biome, writing fixes
+bun run check:layout   # the panes, in a real browser, at five window sizes
 bun run build
 ```
+
+`check:layout` exists because a pane whose footer has slid off the bottom of the
+window looks perfectly fine in a screenshot of the top of the page — which is how
+the Organise button once shipped unreachable. It asserts what a screenshot
+cannot: no pane taller than the window, overflow scrolling inside the pane rather
+than taking the page with it, both footers still on screen after a long document
+has been organised, and the hover card still inside the window when you hover the
+far corner. Set `OTIS_CHROMIUM` to skip `playwright install` if you already have
+a chromium.
 
 Your key and your notes stay in the browser: the key in `localStorage`, the
 project in IndexedDB. Nothing is sent anywhere but the model endpoint you
