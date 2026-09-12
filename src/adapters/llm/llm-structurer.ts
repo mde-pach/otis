@@ -46,7 +46,9 @@ export async function pickShape(
 
 	const listing = fragments.map((f) => `${f.id}: ${f.text.replace(/\s+/g, " ")}`).join("\n");
 	const menu = shapes
-		.map((s) => `${s.id} — ${s.name}: ${s.summary}. roles: ${s.slots.map((x) => x.role).join(", ")}`)
+		.map(
+			(s) => `${s.id} — ${s.name}: ${s.summary}. roles: ${s.slots.map((x) => x.role).join(", ")}`,
+		)
 		.join("\n");
 
 	const raw = await askJson<Pick>(config, {
