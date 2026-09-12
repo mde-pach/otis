@@ -30,10 +30,10 @@ const seed = (): Project => {
 };
 
 describe("measuredItems", () => {
-	test("names every empty slot in the chosen skeleton", () => {
+	test("names an empty slot by its role, never by a heading", () => {
 		const items = measuredItems(seed()).filter((i) => i.kind === "empty-slot");
 		expect(items).toHaveLength(6);
-		expect(items[0]?.question).toContain("Hook");
+		expect(items[0]?.question).toContain("hook");
 	});
 
 	test("reports fragments written and never placed", () => {

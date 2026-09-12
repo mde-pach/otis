@@ -33,7 +33,7 @@ export function measuredItems(project: Project): Omit<ReviewItem, "id" | "status
 			if (!project.blocks.some((b) => b.slot === slot.id)) {
 				items.push({
 					kind: "empty-slot",
-					question: `"${slot.name}" is empty — ${slot.hint}. What goes there, or should the skeleton change?`,
+					question: `Nothing covers ${slot.role} — ${slot.hint}. What goes there, or is this the wrong shape?`,
 					slotId: slot.id,
 					source: "measured",
 				});

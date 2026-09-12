@@ -103,7 +103,7 @@ export function proposeReword(
 
 export function acceptReword(project: Project, rewordId: string): Project {
 	const reword = project.rewords.find((r) => r.id === rewordId);
-	if (!reword || reword.status !== "pending") return project;
+	if (reword?.status !== "pending") return project;
 	return {
 		...project,
 		blocks: project.blocks.map((b) =>
