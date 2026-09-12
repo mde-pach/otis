@@ -61,3 +61,38 @@ export function retentionRatio(before: string, after: string): number {
 	const originalLength = before.trim().split(/\s+/).filter(Boolean).length;
 	return originalLength === 0 ? 1 : kept / originalLength;
 }
+
+/**
+ * Share of the original's words that survive anywhere in the rewrite, order
+ * ignored.
+ *
+ * `retentionRatio` above walks the sequence, so it scores a faithful
+ * reordering at zero — "p99 went from 180ms to 410ms in the week after
+ * rollout" rearranged to lead with the week keeps every word and shares almost
+ * no subsequence. For judging whether a reword kept the writer's words, the bag
+ * is the honest measure; the sequence version is for rendering a diff.
+ */
+export function wordRetention(before: string, after: string): number {
+	const bag = (text: string) =>
+		text
+			.toLowerCase()
+			.replace(/[^\p{L}\p{N}\s]/gu, " ")
+			.split(/\s+/)
+			.filter(Boolean);
+
+	const original = bag(before);
+	if (original.length === 0) return 1;
+
+	const remaining = new Map<string, number>();
+	for (const word of bag(after)) remaining.set(word, (remaining.get(word) ?? 0) + 1);
+
+	let kept = 0;
+	for (const word of original) {
+		const left = remaining.get(word) ?? 0;
+		if (left > 0) {
+			kept++;
+			remaining.set(word, left - 1);
+		}
+	}
+	return kept / original.length;
+}

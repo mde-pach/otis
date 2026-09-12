@@ -15,6 +15,7 @@ const block = (over: Partial<Block> = {}): Block => ({
 	fragmentId: "f01",
 	text: fragment().text,
 	slot: null,
+	order: 0,
 	...over,
 });
 

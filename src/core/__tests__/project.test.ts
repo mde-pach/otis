@@ -39,7 +39,7 @@ describe("selectors", () => {
 		const { project } = importDocument(emptyProject("p1", "t"), doc);
 		const placed = {
 			...project,
-			blocks: [{ id: "b1", fragmentId: "f01", text: "x", slot: null }],
+			blocks: [{ id: "b1", fragmentId: "f01", text: "x", slot: null, order: 0 }],
 		};
 		expect(orphanFragments(placed).map((f) => f.id)).toEqual(["f02", "f03"]);
 		expect(stats(placed).placed).toBe(1);

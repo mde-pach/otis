@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { diffWords, retentionRatio } from "../diff";
+import { diffWords, retentionRatio, wordRetention } from "../diff";
 
 describe("diffWords", () => {
 	test("identical text is all kept", () => {
@@ -46,5 +46,24 @@ describe("retentionRatio", () => {
 		const r = retentionRatio("the cache was cold", "the cache went cold");
 		expect(r).toBeGreaterThan(0.5);
 		expect(r).toBeLessThan(1);
+	});
+});
+
+describe("wordRetention", () => {
+	test("a reordering keeps everything, where the sequence measure sees nothing", () => {
+		const a = "p99 went from 180ms to 410ms in the week after rollout.";
+		const b = "In the week after rollout, p99 went from 180ms to 410ms.";
+		expect(retentionRatio(a, b)).toBe(0);
+		expect(wordRetention(a, b)).toBe(1);
+	});
+
+	test("a rewrite keeps almost nothing", () => {
+		expect(
+			wordRetention("p99 went from 180ms to 410ms.", "Latency regressed sharply after the change."),
+		).toBeLessThan(0.2);
+	});
+
+	test("repeated words are counted once each, not once for all", () => {
+		expect(wordRetention("the cache the cache", "the cache")).toBe(0.5);
 	});
 });
