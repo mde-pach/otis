@@ -9,7 +9,7 @@
 import { fragmentsById } from "./project";
 import { deriveState, summarise } from "./provenance";
 import { skeletonById } from "./skeletons";
-import type { Block, Fragment, Project } from "./types";
+import type { Block, Fragment, Project, SlotTitle } from "./types";
 
 function nextBlockId(project: Project): string {
 	let max = 0;
@@ -145,33 +145,49 @@ export function moveBlockToSlot(project: Project, blockId: string, slot: string)
 	};
 }
 
+export interface DraftSection {
+	slotId: string;
+	/** What the slot is for. Internal — never rendered as a heading. */
+	role: string;
+	/** The heading written for this article, if there is one. */
+	title?: SlotTitle;
+	blocks: Block[];
+}
+
 /** Blocks in reading order: slot order from the skeleton, then order within a slot. */
-export function draftOrder(
-	project: Project,
-): { slotId: string; slotName: string; blocks: Block[] }[] {
+export function draftOrder(project: Project): DraftSection[] {
 	const skeleton = skeletonById(project.skeletonId);
-	const slots = skeleton ? skeleton.slots : [{ id: "body", name: "Body", hint: "" }];
+	const slots = skeleton ? skeleton.slots : [{ id: "body", role: "the piece", hint: "" }];
 	return slots.map((slot) => ({
 		slotId: slot.id,
-		slotName: slot.name,
+		role: slot.role,
+		title: project.titles[slot.id],
 		blocks: project.blocks.filter((b) => b.slot === slot.id).sort((a, b) => a.order - b.order),
 	}));
+}
+
+/** A title the writer edited is theirs; one they never touched stays the tool's. */
+export function setTitle(
+	project: Project,
+	slotId: string,
+	text: string,
+	source: "tool" | "yours",
+): Project {
+	const titles = { ...project.titles };
+	if (text.trim()) titles[slotId] = { text: text.trim(), source };
+	else delete titles[slotId];
+	return { ...project, titles, updatedAt: Date.now() };
 }
 
 export function blocksInSlot(project: Project, slotId: string): Block[] {
 	return project.blocks.filter((b) => b.slot === slotId).sort((a, b) => a.order - b.order);
 }
 
-export interface ExportOptions {
-	/** Slot names as headings. Off by default: a skeleton is scaffolding, not structure. */
-	slotHeadings?: boolean;
-}
-
-export function exportMarkdown(project: Project, options: ExportOptions = {}): string {
+export function exportMarkdown(project: Project): string {
 	const parts: string[] = [`# ${project.title}`];
 	for (const section of draftOrder(project)) {
 		if (section.blocks.length === 0) continue;
-		if (options.slotHeadings) parts.push(`## ${section.slotName}`);
+		if (section.title) parts.push(`## ${section.title.text}`);
 		for (const block of section.blocks) parts.push(block.text);
 	}
 	return `${parts.join("\n\n")}\n`;
@@ -203,4 +219,48 @@ export function exportProvenance(project: Project): string {
 		}
 	}
 	return `${lines.join("\n")}\n`;
+}
+
+export interface SlotAssignment {
+	slotId: string;
+	fragmentIds: string[];
+}
+
+/**
+ * Lay the whole article out at once: every fragment named in the assignment
+ * becomes a block, in the order given. Fragments left out stay unused, which is
+ * a fact about the notes rather than a hole in the article.
+ *
+ * Blocks the writer edited keep their text, because an assignment is about
+ * order, not about words.
+ */
+export function assignToSlots(project: Project, assignment: SlotAssignment[]): Project {
+	const known = new Set(project.fragments.map((f) => f.id));
+	const previous = new Map(project.blocks.map((b) => [b.fragmentId, b]));
+	const blocks: Block[] = [];
+	let n = 0;
+
+	for (const { slotId, fragmentIds } of assignment) {
+		let order = 0;
+		for (const fragmentId of fragmentIds) {
+			if (!known.has(fragmentId) || blocks.some((b) => b.fragmentId === fragmentId)) continue;
+			const before = previous.get(fragmentId);
+			const fragment = project.fragments.find((f) => f.id === fragmentId);
+			blocks.push({
+				id: `b${String(++n).padStart(2, "0")}`,
+				fragmentId,
+				text: before?.text ?? fragment?.text ?? "",
+				slot: slotId,
+				order: order++,
+				...(before?.acceptedRewordText ? { acceptedRewordText: before.acceptedRewordText } : {}),
+			});
+		}
+	}
+
+	return { ...project, blocks, updatedAt: Date.now() };
+}
+
+/** Everything, in the order it was written. What runs when there is no key. */
+export function assignInOrder(project: Project, slotId = "body"): Project {
+	return assignToSlots(project, [{ slotId, fragmentIds: project.fragments.map((f) => f.id) }]);
 }
