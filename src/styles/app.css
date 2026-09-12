@@ -34,7 +34,7 @@
 
 body {
 	margin: 0;
-	height: 100vh;
+	height: 100dvh;
 	overflow: hidden;
 	background: var(--paper);
 	color: var(--ink);
@@ -52,9 +52,13 @@ input,
 }
 
 .app {
-	height: 100vh;
+	height: 100dvh;
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 212px;
+	/* a grid row is auto by default, which means "as tall as the content" —
+	   long notes then push every footer off the bottom of the window */
+	grid-template-rows: minmax(0, 1fr);
+	overflow: hidden;
 }
 
 .app.working {
@@ -65,6 +69,9 @@ input,
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
+	/* and a grid item's automatic minimum size is its content, so the pane has
+	   to be told it may be shorter than what is inside it */
+	min-height: 0;
 }
 
 .pane + .pane {
@@ -77,6 +84,7 @@ input,
 
 .pane-head,
 .pane-foot {
+	flex: none;
 	display: flex;
 	align-items: center;
 	gap: 10px;
@@ -109,9 +117,12 @@ input,
 	margin-left: auto;
 }
 
+/* the only part of a pane that scrolls; min-height for the same reason as above */
 .scroll {
-	flex: 1;
+	flex: 1 1 auto;
+	min-height: 0;
 	overflow-y: auto;
+	overscroll-behavior: contain;
 	padding: 28px 22px 60px;
 }
 
@@ -201,7 +212,12 @@ input,
 /* ------------------------------------------------------------ peek */
 .peek {
 	position: fixed;
+	/* placed by Peek.tsx once measured; these keep it off-screen until then */
+	left: -9999px;
+	top: -9999px;
 	z-index: 30;
+	max-height: 60dvh;
+	overflow: hidden;
 	width: min(390px, 46vw);
 	background: var(--sheet);
 	border: 1px solid var(--line-2);
@@ -416,7 +432,15 @@ input,
 
 	.app {
 		grid-template-columns: 1fr;
+		grid-template-rows: none;
 		height: auto;
+		overflow: visible;
+	}
+
+	/* stacked, each pane is its own window: a fixed height, scrolling inside,
+	   so its footer stays reachable without scrolling past the whole document */
+	.pane {
+		height: 82dvh;
 	}
 
 	.pane + .pane {
@@ -424,12 +448,8 @@ input,
 		border-top: 1px solid var(--line);
 	}
 
-	.pane {
-		min-height: 78vh;
-	}
-
 	.panel {
-		min-height: 0;
+		height: auto;
 	}
 
 	.peek {

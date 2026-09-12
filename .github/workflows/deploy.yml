@@ -31,8 +31,21 @@ jobs:
         with:
           path: dist
 
+  # the panes are a fixed-height grid: this is what catches a footer that has
+  # slid off the bottom of the window, which a screenshot of the top would not
+  layout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run check:layout
+
   deploy:
-    needs: build
+    needs: [build, layout]
     runs-on: ubuntu-latest
     environment:
       name: github-pages

@@ -1,4 +1,4 @@
-import { Show } from "solid-js";
+import { createEffect, Show } from "solid-js";
 import { diffWords } from "../core/diff";
 
 export interface PeekData {
@@ -18,14 +18,44 @@ const SAYS: Record<PeekData["kind"], string> = {
 	edited: "yours — you changed it here",
 };
 
+const EDGE = 10;
+
 /** What it was, shown rather than described. */
 export function Peek(props: { data: PeekData | null }) {
 	const ops = () => (props.data?.before ? diffWords(props.data.before, props.data.after) : []);
+	let node: HTMLElement | undefined;
+
+	/**
+	 * Placed after it has been measured, never from the cursor alone: near the
+	 * right edge it would otherwise hang off the window, and a long diff near the
+	 * bottom would run past it.
+	 */
+	const place = () => {
+		const data = props.data;
+		if (!node || !data) return;
+		const box = node.getBoundingClientRect();
+		const x =
+			data.x + box.width > window.innerWidth - EDGE
+				? Math.max(EDGE, data.x - box.width - 32)
+				: data.x;
+		const y =
+			data.y + box.height > window.innerHeight - EDGE
+				? Math.max(EDGE, window.innerHeight - box.height - EDGE)
+				: data.y;
+		node.style.left = `${x}px`;
+		node.style.top = `${y}px`;
+	};
+
+	createEffect(() => {
+		// re-place whenever the hovered thing changes, after it has rendered
+		void props.data;
+		queueMicrotask(place);
+	});
 
 	return (
 		<Show when={props.data}>
 			{(d) => (
-				<aside class="peek" style={{ left: `${d().x}px`, top: `${d().y}px` }} aria-hidden="true">
+				<aside class="peek" ref={(el) => (node = el)} aria-hidden="true">
 					<span class={`peek-kind ${d().kind}`}>
 						{d().refs.length ? `${d().refs.join(" + ")} · ` : ""}
 						{SAYS[d().kind]}
