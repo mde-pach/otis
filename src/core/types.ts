@@ -47,7 +47,19 @@ export type BlockState = "verbatim" | "edited" | "reword-accepted" | "written-he
 export interface Skeleton {
 	readonly id: string;
 	readonly name: string;
-	readonly slots: readonly { id: string; name: string; hint: string }[];
+	readonly summary: string;
+	/** `role` is what the slot is for; it is never shown as a heading. */
+	readonly slots: readonly { id: string; role: string; hint: string }[];
+}
+
+/**
+ * A heading for one slot, in one article. Never a fixed label: the tool writes
+ * it from the writer's own words, and it stays marked as the tool's until the
+ * writer edits it, at which point it is theirs.
+ */
+export interface SlotTitle {
+	text: string;
+	source: "tool" | "yours";
 }
 
 /** A proposed rewording. It is not in the draft and never will be unless accepted. */
@@ -116,6 +128,8 @@ export interface Project {
 	blocks: Block[];
 	rewords: Reword[];
 	rounds: ReviewRound[];
+	/** Per-slot headings, written for this article. Absent means no heading. */
+	titles: Record<string, SlotTitle>;
 	skeletonId: string | null;
 	/** Embedder identity the vectors were produced with; vectors are invalid across engines. */
 	embedderId: string | null;
@@ -139,6 +153,7 @@ export function emptyProject(id: string, title: string, now = Date.now()): Proje
 		blocks: [],
 		rewords: [],
 		rounds: [],
+		titles: {},
 		skeletonId: null,
 		embedderId: null,
 	};
