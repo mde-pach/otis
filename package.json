@@ -1,0 +1,24 @@
+{
+	"name": "otis",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"dev": "astro dev",
+		"build": "astro build",
+		"preview": "astro preview",
+		"test": "bun test",
+		"lint": "biome check .",
+		"format": "biome check --write ."
+	},
+	"dependencies": {
+		"@astrojs/solid-js": "^7.0.2",
+		"@huggingface/transformers": "^4.2.0",
+		"astro": "^7.3.2",
+		"solid-js": "^1.9.15"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.13",
+		"@types/bun": "^1.4.2",
+		"typescript": "^7.0.2"
+	}
+}
