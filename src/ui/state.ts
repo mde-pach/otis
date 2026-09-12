@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import { createStore } from "solid-js/store";
+import { createStore, unwrap } from "solid-js/store";
 import { createTransformersEmbedder } from "../adapters/embedder/transformers-embedder";
 import { createIndexedDbStore } from "../adapters/store/indexeddb-store";
 import { nearDuplicates } from "../core/cluster";
@@ -110,7 +110,9 @@ export async function regroup() {
 		setMessage(proposal.rationale);
 
 		recomputeDuplicates();
-		await store.save(project);
+		// unwrap: a Solid store is a Proxy, and structuredClone refuses one, so
+		// IndexedDB silently lost every write until this was here.
+		await store.save(unwrap(project));
 		await store.saveVectors(PROJECT_ID, vectors);
 		setPhase("ready");
 	} catch (error) {
@@ -172,7 +174,7 @@ export async function copyDiagnostics(): Promise<boolean> {
 
 export async function renameGroup(groupId: string, label: string) {
 	setProject("groups", (g) => g.id === groupId, { label, auto: false });
-	await store.save(project);
+	await store.save(unwrap(project));
 }
 
 export async function reset() {

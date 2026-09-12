@@ -382,3 +382,16 @@ input:focus-visible {
 	overflow-wrap: anywhere;
 	color: var(--ink-soft);
 }
+
+.facts.diag {
+	background: var(--surface-2);
+	border-style: dashed;
+}
+
+.btn.link {
+	margin-left: auto;
+	padding: 2px 8px;
+	border-color: transparent;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
