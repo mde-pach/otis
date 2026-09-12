@@ -32,6 +32,8 @@ export interface Block {
 	readonly fragmentId: string;
 	text: string;
 	slot: string | null;
+	/** Position within its slot. */
+	order: number;
 	/**
 	 * Set when a tool-proposed reword was accepted, to the exact accepted text.
 	 * If the writer then edits the block, text diverges and the state falls back
@@ -48,6 +50,62 @@ export interface Skeleton {
 	readonly slots: readonly { id: string; name: string; hint: string }[];
 }
 
+/** A proposed rewording. It is not in the draft and never will be unless accepted. */
+export interface Reword {
+	readonly id: string;
+	readonly blockId: string;
+	/** The block's text at the moment the suggestion was made. */
+	readonly original: string;
+	readonly proposed: string;
+	readonly createdAt: number;
+	status: "pending" | "accepted" | "rejected";
+	/** Why it is safe to show, in numbers. */
+	readonly check: FaithfulnessCheck;
+}
+
+export interface FaithfulnessCheck {
+	/** Share of the original's words kept. */
+	retention: number;
+	/** Numbers, units and code identifiers present in the reword but not the original. */
+	addedFacts: string[];
+	passed: boolean;
+	reason: string;
+}
+
+export type ReviewItemKind =
+	| "orphan"
+	| "empty-slot"
+	| "duplicate"
+	| "ungrouped"
+	| "missing-evidence"
+	| "missing-step"
+	| "unsupported-claim"
+	| "digression";
+
+export interface ReviewItem {
+	readonly id: string;
+	readonly kind: ReviewItemKind;
+	/** What the writer is being asked. Never a sentence to paste into the draft. */
+	readonly question: string;
+	readonly blockId?: string;
+	readonly fragmentIds?: string[];
+	readonly slotId?: string;
+	/** "measured" items come from arithmetic; "judged" ones came from a model. */
+	readonly source: "measured" | "judged";
+	status: "open" | "resolved" | "waived";
+	note?: string;
+}
+
+/** Frozen once created. Progress is only legible if the list stops moving. */
+export interface ReviewRound {
+	readonly id: string;
+	readonly index: number;
+	readonly createdAt: number;
+	readonly items: ReviewItem[];
+	/** How the round was produced, shown verbatim. */
+	readonly rationale: string;
+}
+
 export interface Project {
 	readonly id: string;
 	title: string;
@@ -56,15 +114,11 @@ export interface Project {
 	fragments: Fragment[];
 	groups: Group[];
 	blocks: Block[];
+	rewords: Reword[];
+	rounds: ReviewRound[];
 	skeletonId: string | null;
 	/** Embedder identity the vectors were produced with; vectors are invalid across engines. */
 	embedderId: string | null;
-}
-
-export interface DuplicatePair {
-	readonly a: string;
-	readonly b: string;
-	readonly score: number;
 }
 
 export interface ProjectStats {
@@ -83,6 +137,8 @@ export function emptyProject(id: string, title: string, now = Date.now()): Proje
 		fragments: [],
 		groups: [],
 		blocks: [],
+		rewords: [],
+		rounds: [],
 		skeletonId: null,
 		embedderId: null,
 	};
