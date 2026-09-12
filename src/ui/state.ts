@@ -4,8 +4,9 @@ import { createTransformersEmbedder } from "../adapters/embedder/transformers-em
 import { createIndexedDbStore } from "../adapters/store/indexeddb-store";
 import { nearDuplicates } from "../core/cluster";
 import { createEmbeddingGrouper } from "../core/embedding-grouper";
+import type { GroupDiagnostics } from "../core/ports";
 import { importDocument, stats, ungroupedFragments } from "../core/project";
-import type { Vector } from "../core/similarity";
+import { cosine, type Vector } from "../core/similarity";
 import { emptyProject, type Project } from "../core/types";
 
 const PROJECT_ID = "current";
@@ -19,6 +20,7 @@ const [message, setMessage] = createSignal("");
 const [device, setDevice] = createSignal<string | null>(null);
 const [project, setProject] = createStore<Project>(emptyProject(PROJECT_ID, "Untitled article"));
 const [duplicates, setDuplicates] = createSignal<{ a: string; b: string; score: number }[]>([]);
+const [diagnostics, setDiagnostics] = createSignal<GroupDiagnostics | null>(null);
 
 /** Vectors are cached but never reactive — nothing in the UI renders a vector. */
 let vectors: Record<string, Vector> = {};
@@ -33,7 +35,7 @@ const embedder = createTransformersEmbedder({
 	},
 });
 
-export const state = { phase, message, device, project, duplicates };
+export const state = { phase, message, device, project, duplicates, diagnostics };
 
 export async function init() {
 	const saved = await store.load(PROJECT_ID);
@@ -90,7 +92,7 @@ export async function regroup() {
 					});
 				},
 			},
-			threshold: 0.55,
+			cut: { kind: "largest-gap" },
 			minClusterSize: 2,
 			onVectors: (byId) => {
 				vectors = { ...vectors, ...byId };
@@ -104,6 +106,7 @@ export async function regroup() {
 			proposal.groups.map((g, i) => ({ ...g, id: `g${String(i + 1).padStart(2, "0")}` })),
 		);
 		setProject("embedderId", embedder.id);
+		setDiagnostics(proposal.diagnostics ?? null);
 		setMessage(proposal.rationale);
 
 		recomputeDuplicates();
@@ -122,6 +125,51 @@ export async function regroup() {
 	}
 }
 
+/**
+ * Everything needed to argue with a grouping, as one JSON blob: the groups, the
+ * numbers behind them, and every pairwise similarity. Meant to be pasted
+ * somewhere and picked apart, which is the only way to tell a bad threshold
+ * from a bad idea.
+ */
+export function exportDiagnostics(): string {
+	const ids = project.fragments.map((f) => f.id).filter((id) => vectors[id]);
+	const pairs: [string, string, number][] = [];
+	for (let i = 0; i < ids.length; i++) {
+		for (let j = i + 1; j < ids.length; j++) {
+			const a = vectors[ids[i] as string] as Vector;
+			const b = vectors[ids[j] as string] as Vector;
+			pairs.push([ids[i] as string, ids[j] as string, Number(cosine(a, b).toFixed(4))]);
+		}
+	}
+	return JSON.stringify(
+		{
+			generatedAt: new Date().toISOString(),
+			fragments: project.fragments.map((f) => ({ id: f.id, text: f.text })),
+			groups: project.groups.map((g) => ({
+				id: g.id,
+				label: g.label,
+				auto: g.auto,
+				fragmentIds: g.fragmentIds,
+			})),
+			ungroupedFragmentIds: ungroupedFragments(project).map((f) => f.id),
+			duplicates: duplicates(),
+			diagnostics: diagnostics(),
+			rawPairSimilarity: pairs,
+		},
+		null,
+		1,
+	);
+}
+
+export async function copyDiagnostics(): Promise<boolean> {
+	try {
+		await navigator.clipboard.writeText(exportDiagnostics());
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 export async function renameGroup(groupId: string, label: string) {
 	setProject("groups", (g) => g.id === groupId, { label, auto: false });
 	await store.save(project);
@@ -130,6 +178,7 @@ export async function renameGroup(groupId: string, label: string) {
 export async function reset() {
 	vectors = {};
 	setDuplicates([]);
+	setDiagnostics(null);
 	const fresh = emptyProject(PROJECT_ID, "Untitled article");
 	setProject(fresh);
 	await store.save(fresh);

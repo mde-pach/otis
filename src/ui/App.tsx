@@ -1,13 +1,14 @@
-import { onMount, Show } from "solid-js";
+import { createSignal, onMount, Show } from "solid-js";
 import { ImportPanel } from "./ImportPanel";
 import { Pile } from "./Pile";
-import { init, projectStats, regroup, reset, state } from "./state";
+import { copyDiagnostics, init, projectStats, regroup, reset, state } from "./state";
 
 export default function App() {
 	onMount(() => {
 		void init();
 	});
 
+	const [copied, setCopied] = createSignal(false);
 	const busy = () => ["loading-model", "embedding", "grouping"].includes(state.phase());
 	const hasFragments = () => state.project.fragments.length > 0;
 
@@ -67,6 +68,29 @@ export default function App() {
 						Start over
 					</button>
 				</div>
+				<Show when={state.diagnostics()}>
+					{(d) => (
+						<div class="facts diag">
+							<span>
+								cut at <b>{d().cutScore.toFixed(3)}</b>
+							</span>
+							<span>
+								similarity spread <b>{d().clusteringSimilarity.spread.toFixed(3)}</b> after
+								centring, <b>{d().rawSimilarity.spread.toFixed(3)}</b> before
+							</span>
+							<span>
+								median <b>{d().rawSimilarity.median.toFixed(3)}</b> raw
+							</span>
+							<button
+								type="button"
+								class="btn link"
+								onClick={() => copyDiagnostics().then(setCopied)}
+							>
+								{copied() ? "copied" : "copy diagnostics"}
+							</button>
+						</div>
+					)}
+				</Show>
 				<Pile />
 				<ImportPanel compact />
 			</Show>
