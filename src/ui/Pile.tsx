@@ -62,14 +62,13 @@ export function Pile() {
 				</div>
 				<Show
 					when={state.duplicates().length > 0}
-					fallback={<p class="hint">No near-duplicate fragments above 0.90.</p>}
+					fallback={<p class="hint">No fragment repeats another one’s words.</p>}
 				>
 					<For each={state.duplicates()}>
 						{(pair) => (
 							<div class="dupcard">
 								<span class="hd">
-									{Math.round(pair.score * 100)}% similar · {displayId(pair.a)} and{" "}
-									{displayId(pair.b)}
+									{displayId(pair.a)} and {displayId(pair.b)} · {pair.reason}
 								</span>
 								<p>{fragmentText(pair.a)}</p>
 								<p class="muted">{fragmentText(pair.b)}</p>

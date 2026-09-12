@@ -1,5 +1,6 @@
 export * from "./cluster";
 export * from "./diff";
+export * from "./duplicates";
 export * from "./embedding-grouper";
 export * from "./label";
 export * from "./ports";

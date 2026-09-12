@@ -2,7 +2,7 @@ import { createSignal } from "solid-js";
 import { createStore, unwrap } from "solid-js/store";
 import { createTransformersEmbedder } from "../adapters/embedder/transformers-embedder";
 import { createIndexedDbStore } from "../adapters/store/indexeddb-store";
-import { nearDuplicates } from "../core/cluster";
+import { findDuplicates } from "../core/duplicates";
 import { createEmbeddingGrouper } from "../core/embedding-grouper";
 import type { GroupDiagnostics } from "../core/ports";
 import { importDocument, stats, ungroupedFragments } from "../core/project";
@@ -19,7 +19,7 @@ const [phase, setPhase] = createSignal<Phase>("idle");
 const [message, setMessage] = createSignal("");
 const [device, setDevice] = createSignal<string | null>(null);
 const [project, setProject] = createStore<Project>(emptyProject(PROJECT_ID, "Untitled article"));
-const [duplicates, setDuplicates] = createSignal<{ a: string; b: string; score: number }[]>([]);
+const [duplicates, setDuplicates] = createSignal<{ a: string; b: string; reason: string }[]>([]);
 const [diagnostics, setDiagnostics] = createSignal<GroupDiagnostics | null>(null);
 
 /** Vectors are cached but never reactive — nothing in the UI renders a vector. */
@@ -55,21 +55,27 @@ export function ungrouped() {
 	return ungroupedFragments(project);
 }
 
+/**
+ * Word overlap, not embeddings, and so it runs the moment text is pasted —
+ * before any model has loaded, and whether or not one ever does.
+ */
 function recomputeDuplicates() {
-	const ids = project.fragments.map((f) => f.id).filter((id) => vectors[id]);
-	if (ids.length < 2) return setDuplicates([]);
-	const pairs = nearDuplicates(
-		ids.map((id) => vectors[id] as Vector),
-		0.9,
-	);
+	const fragments = project.fragments;
+	if (fragments.length < 2) return setDuplicates([]);
+	const pairs = findDuplicates(fragments.map((f) => f.text));
 	setDuplicates(
-		pairs.map((p) => ({ a: ids[p.a] as string, b: ids[p.b] as string, score: p.score })),
+		pairs.map((p) => ({
+			a: (fragments[p.a] as { id: string }).id,
+			b: (fragments[p.b] as { id: string }).id,
+			reason: p.reason,
+		})),
 	);
 }
 
 export async function importText(text: string) {
 	const { project: next } = importDocument(project, text);
 	setProject(next);
+	recomputeDuplicates();
 	await store.save(next);
 	await regroup();
 }
