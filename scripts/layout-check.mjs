@@ -220,6 +220,86 @@ for (const size of SIZES) {
 	await page.click("nav button:nth-child(1)");
 	await page.waitForTimeout(200);
 
+	// and again with arrangements on offer: the strip is the tallest thing the
+	// article pane ever grows, and it must not push a pane off the window
+	await page.evaluate(async (text) => {
+		const many = document.querySelectorAll("[data-run]").length;
+		const id = Array.from({ length: many }, (_, i) => i);
+		const led = [...id];
+		led[0] = 2;
+		led[1] = 0;
+		led[2] = 1;
+		const cut = [...id];
+		cut[4] = null;
+		const open = () =>
+			new Promise((resolve, reject) => {
+				const request = indexedDB.open("otis", 2);
+				request.onsuccess = () => resolve(request.result);
+				request.onerror = () => reject(request.error);
+			});
+		const db = await open();
+		const got = db.transaction("docs", "readwrite").objectStore("docs").get("current");
+		await new Promise((resolve) => {
+			got.onsuccess = resolve;
+		});
+		const doc = got.result ?? { id: "current", notes: text, brief: "", edits: {} };
+		doc.notes = text;
+		doc.reach = 2;
+		doc.shape = 0;
+		doc.edits = {};
+		doc.plan = {
+			basis: text,
+			shapes: [
+				{ name: "la these d'abord", at: led, because: "the claim carries it" },
+				{ name: "as you wrote it", at: id, because: "your order already reads" },
+				{ name: "without the detail", at: cut, because: "that belongs in another piece" },
+			],
+			format: {},
+			short: {},
+			written: [],
+		};
+		const tx = db.transaction("docs", "readwrite");
+		tx.objectStore("docs").put(doc);
+		await new Promise((resolve) => {
+			tx.oncomplete = resolve;
+		});
+	}, document_);
+	await page.reload({ waitUntil: "networkidle" });
+	await page.waitForTimeout(900);
+
+	const offered = await page.evaluate(() => ({
+		cards: document.querySelectorAll(".shape").length,
+		// every card says what it is, why, and the piece it would make
+		named: [...document.querySelectorAll(".shape")].every(
+			(card) => card.querySelector(".nm")?.textContent && card.querySelector(".why")?.textContent,
+		),
+		lines: [...document.querySelectorAll(".shape")].map(
+			(card) => card.querySelectorAll(".skel .ln").length,
+		),
+		leavesOut: document.querySelectorAll(".shape .cut .ln").length,
+		vh: window.innerHeight,
+		tallest: Math.max(
+			...[...document.querySelectorAll(".pane")].map((pane) =>
+				Math.round(pane.getBoundingClientRect().height),
+			),
+		),
+		pageScrolls: document.documentElement.scrollHeight > window.innerHeight + 1,
+	}));
+	check("every arrangement is on offer", offered.cards === 3, `${offered.cards} cards`);
+	check("and each one says what it is and why", offered.named);
+	check(
+		"and shows the piece it would make",
+		offered.lines.every((n) => n > 3),
+		`${offered.lines.join(", ")} sections`,
+	);
+	check("what one would leave out is named", offered.leavesOut > 0);
+	check(
+		"the panes still fit with the strip in them",
+		offered.tallest <= offered.vh + 1,
+		`${offered.tallest}px in ${offered.vh}px`,
+	);
+	check("and the page still never scrolls", !offered.pageScrolls);
+
 	check("no console errors", errors.length === 0, errors[0]);
 	await page.close();
 }
