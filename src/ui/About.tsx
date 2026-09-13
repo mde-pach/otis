@@ -36,15 +36,27 @@ export function About() {
 						have edited since the last run, the button says <em>run again</em>.
 					</p>
 					<p>
+						What comes back is a <strong>proposal, not an article</strong>. It is listed in your own
+						text — what it wants to move, what it would shorten and to what, what it would leave
+						out, and what it says the piece is missing — and each of those can be turned down on its
+						own before any of it is true. Turning down the order does not throw away the rest.
+					</p>
+					<p>
 						Hover any sentence on either side and its counterpart lights up, with the thread between
 						them. A sentence with no thread came from nowhere in your notes: it is something Otis
 						wrote.
 					</p>
 					<p>
-						The piece it moves is a sentence, not a paragraph — notes usually arrive as one long
-						line, and a paragraph would leave nothing to move. Sentences that were together in your
-						notes and are still together come back as one paragraph, so what you read is prose and
-						what you notice is the sentence that went somewhere else.
+						The piece it moves is a <strong>section of your document</strong>, exactly as you
+						separated it: a block between blank lines, a bullet, a heading. If you typed the whole
+						thing on one line there is nothing to separate, so its sentences are the sections
+						instead. There is no paragraph model underneath — a section goes in and a section comes
+						out, and the layout is the Markdown in your own text.
+					</p>
+					<p>
+						Hovering a shortened sentence shows what it actually did: your words struck through
+						where they went, its words beside them. A colour can say a sentence was shortened; it
+						cannot say which words you lost.
 					</p>
 				</section>
 
@@ -119,10 +131,12 @@ export function About() {
 					<h2>What it will not do</h2>
 					<p>
 						It will not invent a number, a unit or an identifier your notes do not contain — a
-						shortening that introduces one is discarded before you ever see it. It will not silently
-						replace your sentence with its own, and it will not call out to a model unless you press
-						run. And it will not hide what it did: the only way a word of its writing reaches your
-						article is in amber.
+						shortening that introduces one is discarded before you ever see it. It will not say
+						again in its own words what you already wrote: a draft that mostly repeats one of your
+						sections is a restatement, not a gap, and is dropped. It will not silently replace your
+						sentence with its own, it will not apply anything you have not agreed to, and it will
+						not call out to a model unless you press run. And it will not hide what it did: the only
+						way a word of its writing reaches your article is in amber.
 					</p>
 				</section>
 
