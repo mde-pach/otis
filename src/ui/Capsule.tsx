@@ -11,13 +11,8 @@ import {
 	setModel,
 	setReach,
 	state,
+	suggestions,
 } from "./state";
-
-const SUGGESTIONS = [
-	"A post-mortem for engineers who weren't there. Lead with the numbers and don't end on the fix.",
-	"A short note for my own team — the mechanism, the fix, and whether it's shipped.",
-	"An explanation for someone who has never touched this. One mechanism at a time.",
-];
 
 /**
  * The only chrome there is: what you are making, how far it may go, and the one
@@ -41,6 +36,7 @@ export function Capsule() {
 	/** What the one button is for, right now. */
 	const label = () => {
 		if (state.busy()) return "reading…";
+		if (state.doc.review) return "reading it";
 		if (dropped_plan()) return "run";
 		if (isStale()) return "run again";
 		return state.doc.plan ? "run again" : "run";
@@ -48,10 +44,10 @@ export function Capsule() {
 
 	return (
 		<>
-			<Show when={open()}>
+			<Show when={open() && suggestions().length > 0}>
 				<div class="hints">
-					<span class="lab">or start from one of these</span>
-					<For each={SUGGESTIONS}>
+					<span class="lab">from what you pasted</span>
+					<For each={suggestions()}>
 						{(said) => (
 							<button
 								type="button"

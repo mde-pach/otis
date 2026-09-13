@@ -3,6 +3,7 @@ import { About } from "./About";
 import { Article } from "./Article";
 import { Capsule } from "./Capsule";
 import { Notes } from "./Notes";
+import { Review } from "./Review";
 import { dropped, init, runs } from "./state";
 import { Threads } from "./Threads";
 
@@ -46,6 +47,7 @@ export default function App() {
 					<Threads lit={lit()} />
 					<Article lit={lit()} onHover={setLit} />
 					<Capsule />
+					<Review />
 				</div>
 			</Show>
 		</main>
