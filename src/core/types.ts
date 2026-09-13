@@ -44,6 +44,23 @@ export interface Run {
 }
 
 /**
+ * One arrangement of the writer's sections: a whole article, in an order.
+ *
+ * A run comes back with several of these rather than one, because "which shape
+ * should this take" is the writer's question and a model guessing at it once is
+ * worse than offering the two or three it can actually make. They cost one
+ * request between them, and switching costs nothing.
+ */
+export interface Shape {
+	/** three or four words for what this arrangement is */
+	name: string;
+	/** where each segment goes in it, or null for left out */
+	at: (number | null)[];
+	/** one sentence, plain words, on why this order */
+	because: string;
+}
+
+/**
  * What the model proposes, expressed only over the writer's own segment
  * indices. It cannot express "put a heading here" or "make a section": the only
  * text it may contribute arrives in `written`, and that is marked.
@@ -55,16 +72,14 @@ export interface Plan {
 	 * entry for — build() checks this rather than trusting the indices.
 	 */
 	basis: string;
-	/** where each segment goes in the article, or null for left out */
-	at: (number | null)[];
+	/** the arrangements on offer; the first is the one the article opens in */
+	shapes: Shape[];
 	/** same words, Markdown added. Formatting is not rewriting. */
 	format: Record<number, string>;
 	/** fewer words, same claims. Passes the faithfulness gate or it is dropped. */
 	short: Record<number, string>;
 	/** the model's own text, anchored after one of your segments */
 	written: Written[];
-	/** one sentence, in plain words, on what it did */
-	because: string;
 }
 
 export const REACH = [
@@ -85,14 +100,6 @@ export interface Written {
 	because: string;
 }
 
-/**
- * What the writer has turned down in a proposal, before any of it is applied.
- * Keyed the way the review lists them: `m` for the order, `s<index>` for a
- * shortening, `d<index>` for a section it wants to leave out, `w<n>` for
- * something it wants to write.
- */
-export type Refused = Record<string, true>;
-
 export interface Doc {
 	id: string;
 	notes: string;
@@ -100,11 +107,8 @@ export interface Doc {
 	reach: Reach;
 	patternId: string;
 	plan: Plan | null;
-	/**
-	 * A proposal that has not been applied. Nothing in it touches the article
-	 * until the writer says so — this is the step where they have their word.
-	 */
-	review: Plan | null;
+	/** which of the plan's arrangements the article is in */
+	shape: number;
 	/** runs the writer has rewritten by hand, keyed by the stable run key */
 	edits: Record<string, string>;
 	updatedAt: number;
@@ -118,7 +122,7 @@ export function emptyDoc(id: string): Doc {
 		reach: 0,
 		patternId: "essay",
 		plan: null,
-		review: null,
+		shape: 0,
 		edits: {},
 		updatedAt: Date.now(),
 	};

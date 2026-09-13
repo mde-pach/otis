@@ -7,9 +7,9 @@
  * tool's. There is no path here that quietly writes.
  */
 
-import { checkFaithfulness, formattingOnly } from "./reword";
+import { checkFaithfulness, formattingOnly, plain } from "./reword";
 import { segment } from "./segments";
-import type { Confidence, Plan, Reach, Refused, Run, Segment } from "./types";
+import type { Plan, Reach, Run, Segment, Shape } from "./types";
 
 export interface Built {
 	runs: Run[];
@@ -31,13 +31,21 @@ export function stale(notes: string, plan: Plan | null): boolean {
 	return Boolean(plan) && (plan as Plan).basis !== notes;
 }
 
+/** The arrangement the article is in, or nothing if the plan has none. */
+export function shapeOf(plan: Plan | null, which: number): Shape | null {
+	if (!plan || plan.shapes.length === 0) return null;
+	return plan.shapes[Math.min(Math.max(which, 0), plan.shapes.length - 1)] ?? null;
+}
+
 /**
  * Reach is the writer's, not the model's: the same plan renders four ways, and
- * the lower settings simply refuse to use parts of it.
+ * the lower settings simply refuse to use parts of it. `which` is the
+ * arrangement, and it is theirs too — one request answers for all of them.
  */
-export function build(notes: string, plan: Plan | null, reach: Reach): Built {
+export function build(notes: string, plan: Plan | null, reach: Reach, which = 0): Built {
 	const segments = segment(notes);
-	if (!plan || reach === 0 || !fits(notes, plan)) {
+	const chosen = shapeOf(plan, which);
+	if (!plan || !chosen || reach === 0 || !fits(notes, plan)) {
 		return {
 			runs: segments.map((s, id) => ({
 				id,
@@ -51,7 +59,7 @@ export function build(notes: string, plan: Plan | null, reach: Reach): Built {
 		};
 	}
 
-	const shape = (s: Segment): { md: string; kind: Run["kind"] } => {
+	const render = (s: Segment): { md: string; kind: Run["kind"] } => {
 		const formatted = plan.format[s.index];
 		const shortened = plan.short[s.index];
 		// a shortening that fails the gate never reaches the page; yours stands
@@ -68,7 +76,7 @@ export function build(notes: string, plan: Plan | null, reach: Reach): Built {
 			runs: segments.map((s, id) => ({
 				id,
 				key: `s${s.index}`,
-				...shape(s),
+				...render(s),
 				from: { start: s.start, end: s.end },
 				fromIndex: s.index,
 			})),
@@ -79,7 +87,7 @@ export function build(notes: string, plan: Plan | null, reach: Reach): Built {
 	const placed: { at: number; segment: Segment }[] = [];
 	const dropped: Segment[] = [];
 	for (const s of segments) {
-		const at = plan.at[s.index];
+		const at = chosen.at[s.index];
 		if (at === null || at === undefined) dropped.push(s);
 		else placed.push({ at, segment: s });
 	}
@@ -88,7 +96,7 @@ export function build(notes: string, plan: Plan | null, reach: Reach): Built {
 	const runs: Run[] = placed.map(({ segment: s }) => ({
 		id: 0,
 		key: `s${s.index}`,
-		...shape(s),
+		...render(s),
 		from: { start: s.start, end: s.end },
 		fromIndex: s.index,
 	}));
@@ -144,100 +152,18 @@ export function share(runs: Run[]): Share {
 }
 
 /**
- * A proposal, in the writer's terms.
- *
- * `build` turns a plan into an article; this turns one into a list of things
- * someone can say no to. Nothing here changes anything — it is what the review
- * reads so the writer can see what is being suggested before it is true.
+ * An arrangement at a glance: the opening of each section, in the order it puts
+ * them. The writer's own words, so choosing a shape means reading their text
+ * rather than a label for it.
  */
-export interface Proposal {
-	/** the sections in the order it wants, each with where it sits now */
-	order: { index: number; text: string; from: number }[];
-	moved: boolean;
-	short: { index: number; was: string; now: string }[];
-	drop: { index: number; text: string }[];
-	written: { n: number; md: string; because: string; confidence: Confidence; after: string }[];
-	because: string;
-}
-
-export function read(notes: string, plan: Plan): Proposal {
+export function outline(notes: string, shape: Shape, words = 5): string[] {
 	const segments = segment(notes);
-
-	const placed = segments
-		.map((s) => ({ s, at: plan.at[s.index] }))
+	return segments
+		.map((s) => ({ s, at: shape.at[s.index] }))
 		.filter((p) => p.at !== null && p.at !== undefined)
-		.sort((a, b) => (a.at as number) - (b.at as number));
-
-	const order = placed.map((p, position) => ({
-		index: p.s.index,
-		text: p.s.text,
-		from: position,
-	}));
-
-	const short = Object.entries(plan.short)
-		.map(([key, now]) => ({ index: Number(key), was: segments[Number(key)]?.text ?? "", now }))
-		.filter((entry) => entry.was && checkFaithfulness(entry.was, entry.now).passed);
-
-	const drop = segments
-		.filter((s) => plan.at[s.index] === null || plan.at[s.index] === undefined)
-		.map((s) => ({ index: s.index, text: s.text }));
-
-	return {
-		order,
-		moved: placed.some((p, position) => p.s.index !== position),
-		short,
-		drop,
-		written: plan.written.map((w, n) => ({
-			n,
-			md: w.md,
-			because: w.because,
-			confidence: w.confidence,
-			after: segments[w.after]?.text ?? "",
-		})),
-		because: plan.because,
-	};
-}
-
-/**
- * The proposal minus what the writer turned down.
- *
- * Refusing the order does not throw the proposal away: the shortenings and the
- * drafts stand, in the writer's own order. Every part is refused on its own,
- * because that is what having a say means.
- */
-export function settle(notes: string, plan: Plan, refused: Refused): Plan {
-	const segments = segment(notes);
-
-	const kept = segments
-		.map((s) => s.index)
-		.filter((i) => plan.at[i] !== null || refused[`d${i}`] === true);
-
-	const order = refused.m
-		? [...kept].sort((a, b) => a - b)
-		: [...kept].sort((a, b) => {
-				const pa = plan.at[a];
-				const pb = plan.at[b];
-				// something the writer rescued has no position of its own; it goes
-				// back where they wrote it, next to whatever it was written beside
-				if (pa === null || pa === undefined) return a - b;
-				if (pb === null || pb === undefined) return a - b;
-				return pa - pb;
-			});
-
-	const at: (number | null)[] = segments.map(() => null);
-	order.forEach((index, position) => {
-		at[index] = position;
-	});
-
-	const short: Record<number, string> = {};
-	for (const [key, text] of Object.entries(plan.short)) {
-		if (!refused[`s${key}`]) short[Number(key)] = text;
-	}
-
-	return {
-		...plan,
-		at,
-		short,
-		written: plan.written.filter((_, n) => !refused[`w${n}`]),
-	};
+		.sort((a, b) => (a.at as number) - (b.at as number))
+		.map(({ s }) => {
+			const said = plain(s.text).replace(/\s+/g, " ").split(" ").filter(Boolean);
+			return said.length > words ? `${said.slice(0, words).join(" ")}…` : said.join(" ");
+		});
 }
