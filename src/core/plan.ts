@@ -154,36 +154,37 @@ export function share(runs: Run[]): Share {
 }
 
 /**
- * An arrangement at a glance: the opening of each section, in the order it puts
- * them. The writer's own words, so choosing a shape means reading their text
- * rather than a label for it.
+ * What an arrangement actually is, in the writer's own words.
+ *
+ * A picture of an order says nothing about the piece — the length of a section
+ * is not information anyone is choosing between. So this is the skeleton: each
+ * section by its opening words, in the order that arrangement puts it, carrying
+ * the place it holds in the notes so a move is visible as well as readable, and
+ * the ones it would leave out said plainly rather than silently missing.
  */
-export function outline(notes: string, shape: Shape, words = 5): string[] {
-	const segments = segment(notes);
-	return segments
-		.map((s) => ({ s, at: shape.at[s.index] }))
-		.filter((p) => p.at !== null && p.at !== undefined)
-		.sort((a, b) => (a.at as number) - (b.at as number))
-		.map(({ s }) => {
-			const said = plain(s.text).replace(/\s+/g, " ").split(" ").filter(Boolean);
-			return said.length > words ? `${said.slice(0, words).join(" ")}…` : said.join(" ");
-		});
+export interface Skeleton {
+	/** the sections it keeps, in its order; `n` is where that section sits in the notes */
+	order: { n: number; text: string }[];
+	/** the sections it would leave out, in the writer's own order */
+	out: { n: number; text: string }[];
 }
 
-/**
- * The same arrangement as a picture: one bar per section, in the order it puts
- * them, as wide as that section is long.
- *
- * A section keeps its width wherever it lands, so reading two of these side by
- * side is seeing what moved rather than being told. Widths are relative to the
- * longest section, 0 to 1.
- */
-export function bars(notes: string, shape: Shape): number[] {
+export function skeleton(notes: string, shape: Shape, words = 7): Skeleton {
 	const segments = segment(notes);
-	const longest = Math.max(1, ...segments.map((s) => s.text.length));
-	return segments
+	const open = (text: string) => {
+		const said = plain(text).replace(/\s+/g, " ").split(" ").filter(Boolean);
+		return said.length > words ? `${said.slice(0, words).join(" ")}…` : said.join(" ");
+	};
+
+	const order = segments
 		.map((s) => ({ s, at: shape.at[s.index] }))
 		.filter((p) => p.at !== null && p.at !== undefined)
 		.sort((a, b) => (a.at as number) - (b.at as number))
-		.map(({ s }) => Math.max(0.12, s.text.length / longest));
+		.map(({ s }) => ({ n: s.index + 1, text: open(s.text) }));
+
+	const out = segments
+		.filter((s) => shape.at[s.index] === null || shape.at[s.index] === undefined)
+		.map((s) => ({ n: s.index + 1, text: open(s.text) }));
+
+	return { order, out };
 }
