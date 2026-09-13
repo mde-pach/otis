@@ -1,92 +1,93 @@
-import { createEffect } from "solid-js";
-import { organise, repeats, setNotes, state, unusedIds } from "./state";
+import { createEffect, onMount } from "solid-js";
+import { segments, setNotes, state } from "./state";
 
 /**
- * Your notes, as one editable document.
+ * What you wrote: one continuous editable text.
  *
- * Deliberately not a reactive list: a rendered list fights the caret, replacing
- * the paragraph under the cursor every time anything else changes. The text is
- * written into the pane once and then left alone; only the marks — which
- * paragraphs went unused, which repeat another — are repainted, by touching
- * classes rather than replacing nodes.
+ * It is never split into elements. Highlighting goes through the Custom
+ * Highlight API, which paints ranges without touching the DOM — so a single
+ * line stays a single line, the caret is never clobbered, and a sentence inside
+ * that line can still be lit.
  */
-export function Notes(props: { lit: string[] }) {
+export function Notes(props: {
+	lit: number | null;
+	dropped: { start: number; end: number }[];
+	onHover: (index: number | null) => void;
+}) {
 	let host: HTMLDivElement | undefined;
-	let lastPainted = "";
 
-	const read = () => [...(host?.children ?? [])].map((n) => n.textContent ?? "").join("\n\n");
-
-	const paintText = () => {
-		if (!host) return;
-		const wanted = state.project.fragments.map((f) => f.text).join("\n\n");
-		if (wanted === lastPainted) return;
-		lastPainted = wanted;
-		host.textContent = "";
-		for (const fragment of state.project.fragments) {
-			const p = document.createElement("p");
-			p.dataset.ref = fragment.id;
-			p.textContent = fragment.text;
-			host.append(p);
-		}
+	const paint = () => {
+		if (!host || host.contains(document.activeElement)) return;
+		if (host.textContent === state.doc.notes) return;
+		host.textContent = state.doc.notes;
 	};
 
-	const paintMarks = () => {
-		if (!host) return;
-		const unused = unusedIds();
-		const repeated = repeats();
-		for (const node of host.children) {
-			const ref = (node as HTMLElement).dataset.ref ?? "";
-			const repeat = repeated.get(ref);
-			node.classList.toggle("unused", unused.has(ref));
-			node.classList.toggle("lit", props.lit.includes(ref));
-			const note = repeat ?? (unused.has(ref) ? "not used" : "");
-			if (note) (node as HTMLElement).dataset.note = note;
-			else (node as HTMLElement).removeAttribute("data-note");
-		}
+	/** Ranges, not spans: this is the whole reason the text stays intact. */
+	const range = (start: number, end: number): Range | null => {
+		const node = host?.firstChild;
+		if (!node) return null;
+		const length = node.textContent?.length ?? 0;
+		if (start >= length) return null;
+		const found = document.createRange();
+		found.setStart(node, Math.max(0, start));
+		found.setEnd(node, Math.min(length, end));
+		return found;
 	};
+
+	const highlights = () => {
+		if (!("highlights" in CSS)) return;
+		const all = segments();
+
+		CSS.highlights.delete("otis-lit");
+		const one = props.lit === null ? null : all[props.lit];
+		const lit = one ? range(one.start, one.end) : null;
+		if (lit) CSS.highlights.set("otis-lit", new Highlight(lit));
+
+		CSS.highlights.delete("otis-out");
+		const out = props.dropped.map((d) => range(d.start, d.end)).filter(Boolean) as Range[];
+		if (out.length) CSS.highlights.set("otis-out", new Highlight(...out));
+	};
+
+	onMount(paint);
 
 	createEffect(() => {
-		// depend on the fragments and the marks, never on what is being typed
-		void state.project.fragments.length;
-		void state.project.blocks.length;
+		void state.doc.notes;
+		paint();
 		void props.lit;
-		paintText();
-		paintMarks();
+		void props.dropped;
+		highlights();
 	});
 
-	const wire = (node: HTMLDivElement) => {
-		host = node;
-		paintText();
-		paintMarks();
-		node.addEventListener("blur", () => {
-			lastPainted = read();
-			void setNotes(read());
-		});
-		node.addEventListener("keydown", (event) => {
-			if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-				event.preventDefault();
-				lastPainted = read();
-				void organise(read());
-			}
-		});
+	const find = (event: MouseEvent) => {
+		const point = document.caretPositionFromPoint?.(event.clientX, event.clientY);
+		if (!point || point.offsetNode !== host?.firstChild) return props.onHover(null);
+		const hit = segments().find((s) => point.offset >= s.start && point.offset <= s.end);
+		props.onHover(hit ? hit.index : null);
 	};
 
 	return (
 		<section class="pane">
-			<div class="pane-head">
-				<span>Notes</span>
-				<span class="pane-right">
-					{state.project.fragments.length} ¶ · {unusedIds().size} not used
-				</span>
-			</div>
-			<div class="scroll">
-				<div class="notes" ref={wire} contentEditable spellcheck={false} />
-			</div>
-			<div class="pane-foot">
-				<span class="quiet">⌘↵ organises</span>
-				<button type="button" class="act lead" onClick={() => void organise(read())}>
-					Organise
-				</button>
+			<div class="ph">what you wrote</div>
+			<div class="scroll" id="notes-scroll">
+				{/* biome-ignore lint/a11y/useSemanticElements: a contenteditable surface is the interactive element; a textarea cannot render provenance or carry highlight ranges */}
+				{/* biome-ignore lint/a11y/useFocusableInteractive: contenteditable is focusable by definition */}
+				<div
+					class="notes"
+					ref={host}
+					role="textbox"
+					aria-multiline="true"
+					tabindex={0}
+					aria-label="what you wrote"
+					contentEditable
+					spellcheck={false}
+					onMouseMove={find}
+					onMouseLeave={() => props.onHover(null)}
+					onInput={(event) => void setNotes(event.currentTarget.textContent ?? "")}
+					onBlur={() => {
+						void setNotes(host?.textContent ?? "");
+						paint();
+					}}
+				/>
 			</div>
 		</section>
 	);
