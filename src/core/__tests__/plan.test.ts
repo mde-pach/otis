@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { build, fits, paragraphs, share, stale, toMarkdown } from "../plan";
+import { build, fits, read, settle, share, stale, toMarkdown } from "../plan";
 import type { Plan } from "../types";
 
 const NOTES = `The cache was doing exactly what we asked it to do.
@@ -152,7 +152,7 @@ describe("toMarkdown", () => {
 	});
 });
 
-describe("a paragraph typed as one line", () => {
+describe("a document typed as one line", () => {
 	const LINE =
 		"The cache was doing exactly what we asked it to do. p99 went from 180ms to 410ms in the week after we shipped it. Nobody experiences the average.";
 
@@ -165,54 +165,79 @@ describe("a paragraph typed as one line", () => {
 		because: "left it alone",
 	};
 
-	test("its sentences are movable pieces, not one lump", () => {
+	test("its sentences are sections the plan can move", () => {
 		const { runs } = build(LINE, inOrder, 2);
 		expect(runs).toHaveLength(3);
 		expect(runs.every((r) => r.kind === "kept")).toBe(true);
 	});
 
-	test("left in order it is still one paragraph, not three", () => {
-		expect(paragraphs(build(LINE, inOrder, 2).runs)).toHaveLength(1);
-		expect(toMarkdown(build(LINE, inOrder, 2).runs)).toBe(LINE);
-	});
-
-	test("reordered inside itself it is still one paragraph, in the new order", () => {
+	test("the article is those sections, in the plan's order, and nothing else", () => {
 		const moved: Plan = { ...inOrder, at: [1, 2, 0] };
 		const out = toMarkdown(build(LINE, moved, 2).runs);
 		expect(out.startsWith("Nobody experiences the average.")).toBe(true);
-		expect(out.split("\n\n")).toHaveLength(1);
+		expect(out.split("\n\n")).toHaveLength(3);
+	});
+});
+
+describe("the proposal, before any of it is true", () => {
+	test("it reads as a list of things you can say no to", () => {
+		const it = read(NOTES, { ...plan, short: { 0: "The cache did exactly what we asked." } });
+		expect(it.moved).toBe(true);
+		expect(it.order.map((o) => o.index)).toEqual([1, 2, 0]);
+		expect(it.short.map((s) => s.index)).toEqual([0]);
+		expect(it.written[0]?.because).toBe("no cost stated");
+		expect(it.drop).toHaveLength(0);
 	});
 
-	test("a sentence carried into another paragraph goes with it, not home", () => {
-		const notes = `${LINE}\n\nRedis was healthy the entire time.`;
-		// the last sentence of the line is lifted out and put after the second paragraph
-		const lifted: Plan = {
-			basis: notes,
-			at: [0, 1, 3, 2],
-			format: {},
-			short: {},
-			written: [],
-			because: "moved the punchline to the end",
-		};
-		const groups = paragraphs(build(notes, lifted, 2).runs);
-		expect(groups.map((g) => g.length)).toEqual([2, 1, 1]);
-		expect(groups.at(-1)?.[0]?.md).toBe("Nobody experiences the average.");
+	test("a shortening that fails the gate is never offered", () => {
+		const liar: Plan = { ...plan, short: { 1: "p99 went from 180ms to 900ms." } };
+		expect(read(NOTES, liar).short).toHaveLength(0);
 	});
 
-	test("what the tool wrote is never absorbed into your paragraph", () => {
-		const filled: Plan = {
-			...inOrder,
-			written: [
-				{
-					after: 0,
-					md: "It cost users half a second twice a day.",
-					confidence: "low",
-					because: "no cost stated",
-				},
-			],
-		};
-		const groups = paragraphs(build(LINE, filled, 3).runs);
-		expect(groups).toHaveLength(3);
-		expect(groups[1]?.[0]?.kind).toBe("written");
+	test("something it wants to leave out is listed as that", () => {
+		const it = read(NOTES, { ...plan, at: [0, 1, null] });
+		expect(it.drop.map((d) => d.text)).toEqual(["Nobody experiences the average."]);
+	});
+});
+
+describe("refusing part of a proposal", () => {
+	const tighter: Plan = { ...plan, short: { 0: "The cache did exactly what we asked." } };
+
+	test("refusing the order keeps the shortening and the draft", () => {
+		const settled = settle(NOTES, tighter, { m: true });
+		expect(settled.at).toEqual([0, 1, 2]);
+		expect(settled.short[0]).toBeDefined();
+		expect(settled.written).toHaveLength(1);
+	});
+
+	test("refusing a shortening leaves your sentence standing", () => {
+		const settled = settle(NOTES, tighter, { s0: true });
+		const { runs } = build(NOTES, settled, 2);
+		expect(runs.find((r) => r.fromIndex === 0)?.kind).toBe("kept");
+		expect(runs.find((r) => r.fromIndex === 0)?.md).toBe(
+			"The cache was doing exactly what we asked it to do.",
+		);
+	});
+
+	test("refusing a draft means it is never written", () => {
+		const settled = settle(NOTES, tighter, { w0: true });
+		expect(build(NOTES, settled, 3).runs.some((r) => r.kind === "written")).toBe(false);
+	});
+
+	test("refusing a drop puts the section back in the article", () => {
+		const cut: Plan = { ...plan, at: [0, 1, null] };
+		expect(build(NOTES, cut, 2).dropped).toHaveLength(1);
+		const settled = settle(NOTES, cut, { d2: true });
+		const { runs, dropped } = build(NOTES, settled, 2);
+		expect(dropped).toHaveLength(0);
+		expect(runs.map((r) => r.fromIndex)).toEqual([0, 1, 2]);
+	});
+
+	test("refusing everything is your words, in your order — markdown is not a word", () => {
+		const settled = settle(NOTES, tighter, { m: true, s0: true, w0: true });
+		const { runs } = build(NOTES, settled, 3);
+		expect(runs.every((r) => r.kind === "kept")).toBe(true);
+		expect(runs.map((r) => r.fromIndex)).toEqual([0, 1, 2]);
+		expect(runs[1]?.md).toContain("**p99");
 	});
 });
