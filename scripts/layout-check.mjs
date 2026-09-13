@@ -220,17 +220,20 @@ for (const size of SIZES) {
 	await page.click("nav button:nth-child(1)");
 	await page.waitForTimeout(200);
 
-	// and again with arrangements on offer: the strip is the tallest thing the
+	// and again with three kinds on offer: the strip is the tallest thing the
 	// article pane ever grows, and it must not push a pane off the window
 	await page.evaluate(async (text) => {
 		const many = document.querySelectorAll("[data-run]").length;
-		const id = Array.from({ length: many }, (_, i) => i);
-		const led = [...id];
-		led[0] = 2;
-		led[1] = 0;
-		led[2] = 1;
-		const cut = [...id];
-		cut[4] = null;
+		// a placement is one part id per section of the writer's own document.
+		// Nothing is placed in "cost" or "detection", which are required — so the
+		// gutter has two questions to ask and the article still has none in it.
+		const placement = Array.from({ length: many }, (_, i) => {
+			if (i === 0) return "observed";
+			if (i === 1) return "hidden";
+			if (i === 2) return "fix";
+			if (i === 4) return null;
+			return "cause";
+		});
 		const open = () =>
 			new Promise((resolve, reject) => {
 				const request = indexedDB.open("otis", 2);
@@ -244,19 +247,22 @@ for (const size of SIZES) {
 		});
 		const doc = got.result ?? { id: "current", notes: text, brief: "", edits: {} };
 		doc.notes = text;
-		doc.reach = 2;
+		doc.reach = 3;
 		doc.shape = 0;
 		doc.edits = {};
 		doc.plan = {
 			basis: text,
 			shapes: [
-				{ name: "la these d'abord", at: led, because: "the claim carries it" },
-				{ name: "as you wrote it", at: id, because: "your order already reads" },
-				{ name: "without the detail", at: cut, because: "that belongs in another piece" },
+				{ patternId: "post-mortem", because: "an incident with a number in it", placement },
+				{
+					patternId: "internal-note",
+					because: "it is short and it is for a team",
+					placement: null,
+				},
+				{ patternId: "essay", because: "it argues something", placement: null },
 			],
 			format: {},
 			short: {},
-			written: [],
 		};
 		const tx = db.transaction("docs", "readwrite");
 		tx.objectStore("docs").put(doc);
@@ -269,14 +275,20 @@ for (const size of SIZES) {
 
 	const offered = await page.evaluate(() => ({
 		cards: document.querySelectorAll(".shape").length,
-		// every card says what it is, why, and the piece it would make
+		// a card names its pattern, says what that kind does, and lists its parts
 		named: [...document.querySelectorAll(".shape")].every(
-			(card) => card.querySelector(".nm")?.textContent && card.querySelector(".why")?.textContent,
+			(card) =>
+				card.querySelector(".nm")?.textContent &&
+				card.querySelector(".does")?.textContent &&
+				card.querySelectorAll(".parts em").length > 2,
 		),
-		lines: [...document.querySelectorAll(".shape")].map(
-			(card) => card.querySelectorAll(".skel .ln").length,
+		// and it is the same description whatever the document says
+		static: [...document.querySelectorAll(".shape")].every(
+			(card) => !card.textContent.includes("p99"),
 		),
-		leavesOut: document.querySelectorAll(".shape .cut .ln").length,
+		asks: document.querySelectorAll(".gutter .ask").length,
+		// a question is asked in the gutter and never written into the article
+		inOutput: document.querySelectorAll(".md .ask, .md .pop, .md .was, .md .card").length,
 		vh: window.innerHeight,
 		tallest: Math.max(
 			...[...document.querySelectorAll(".pane")].map((pane) =>
@@ -285,14 +297,12 @@ for (const size of SIZES) {
 		),
 		pageScrolls: document.documentElement.scrollHeight > window.innerHeight + 1,
 	}));
-	check("every arrangement is on offer", offered.cards === 3, `${offered.cards} cards`);
-	check("and each one says what it is and why", offered.named);
-	check(
-		"and shows the piece it would make",
-		offered.lines.every((n) => n > 3),
-		`${offered.lines.join(", ")} sections`,
-	);
-	check("what one would leave out is named", offered.leavesOut > 0);
+	check("every kind is on offer", offered.cards === 3, `${offered.cards} cards`);
+	check("and each card describes its kind", offered.named);
+	check("a card says nothing about your document", offered.static);
+	if (!stacked)
+		check("a part with nothing in it asks you", offered.asks > 0, `${offered.asks} questions`);
+	check("and asks in the gutter, never in the article", offered.inOutput === 0);
 	check(
 		"the panes still fit with the strip in them",
 		offered.tallest <= offered.vh + 1,

@@ -7,8 +7,8 @@ export function About() {
 					<h1>Otis</h1>
 					<p class="lead">
 						A tool for turning a pile of notes into an article you would actually publish. It
-						reorders, shortens and fills in — but the writing stays yours, and every word that is
-						not yours is visible on sight.
+						reorders, shortens and asks about what is missing — but every word in it is yours, and
+						what it did to get there is visible on sight.
 					</p>
 				</section>
 
@@ -16,9 +16,10 @@ export function About() {
 					<h2>The rule</h2>
 					<p>
 						<strong>Your text is the source of truth.</strong> Otis never quietly replaces it. What
-						it does is move your sentences into an order that reads, shorten the ones that run long,
-						and — when you let it — write the parts your notes never covered. Each of those is a
-						different colour on the page, so you can see which is which without asking.
+						it does is put your sections in the order a kind of piece puts them, shorten the ones
+						that run long by deleting words, and tell you which parts of that kind your notes do not
+						cover. It does not write those parts. It asks you about them, in the gutter, and the
+						question comes out of a file you can open and edit.
 					</p>
 				</section>
 
@@ -36,18 +37,18 @@ export function About() {
 						have edited since the last run, the button says <em>run again</em>.
 					</p>
 					<p>
-						It comes back with <strong>two or three arrangements</strong>, not one, and applies the
-						first. The others are already paid for, so the strip above the article lets you move
-						between them for nothing. Each one is laid out in full: what it leads with, why it is in
-						that order, and the piece it would make — every section by its opening words, numbered
-						by where it sits in your notes, with anything it would leave out named rather than
-						silently missing. Nothing is behind a hover. You are choosing the shape of your article,
-						so you get to read all three before you say which.
+						It comes back with <strong>three kinds of piece</strong> the notes could become, and
+						organises the first. Each card describes its kind and nothing else: the name, what that
+						kind of piece does, and its parts in the order it puts them, dashed where the piece can
+						go without one. It reads the same on every document, because you are choosing a shape
+						rather than previewing a result. The one line about your notes is why that kind was
+						picked. Choosing another card organises it, once; going back to one you have already
+						read costs nothing.
 					</p>
 					<p>
 						Hover any sentence on either side and its counterpart lights up, with the thread between
-						them. A sentence with no thread came from nowhere in your notes: it is something Otis
-						wrote.
+						them. Every sentence in the article has a thread, because every sentence in the article
+						is one of yours.
 					</p>
 					<p>
 						The piece it moves is a <strong>section of your document</strong>, exactly as you
@@ -65,8 +66,8 @@ export function About() {
 					</p>
 					<p>
 						<strong>copy markdown</strong>, at the top of the article, puts the whole thing on your
-						clipboard as plain Markdown. Your words and its own, no marks, ready to paste wherever
-						you are publishing.
+						clipboard as plain Markdown. Your words, no marks, ready to paste wherever you are
+						publishing.
 					</p>
 				</section>
 
@@ -82,12 +83,11 @@ export function About() {
 							<span>your sentence, fewer words — no number or claim changed</span>
 						</div>
 						<div>
-							<span class="sw k-written">written by Otis</span>
-							<span>not in your notes at all; edit it and it becomes yours</span>
-						</div>
-						<div>
-							<span class="sw k-low">a long reach</span>
-							<span>written, and further from what your notes support — read these first</span>
+							<span class="sw k-written">a question, in the gutter</span>
+							<span>
+								a part of this kind of piece that none of your sections went into. The words are the
+								pattern file's; nothing is written into the article
+							</span>
 						</div>
 						<div>
 							<span class="sw k-out">dimmed, on the left</span>
@@ -118,11 +118,17 @@ export function About() {
 						</div>
 						<div>
 							<b>reorder</b>
-							<span>moves things, and drops what does not earn its place.</span>
+							<span>
+								puts your sections in the order this kind of piece puts them, and names what it
+								leaves out.
+							</span>
 						</div>
 						<div>
-							<b>rebuild</b>
-							<span>all of the above, and writes what is missing.</span>
+							<b>and ask</b>
+							<span>
+								all of the above, and asks you about the parts your notes do not cover. It never
+								fills one.
+							</span>
 						</div>
 					</div>
 				</section>
@@ -130,23 +136,26 @@ export function About() {
 				<section>
 					<h2>Where the judgement comes from</h2>
 					<p>
-						Otis reads a short reference note for the kind of piece you asked for — a few dozen
-						words on how a post-mortem or an internal note tends to move. Those notes live in the
-						repository as plain Markdown, versioned with the code. When one gives bad results you
-						edit a file rather than guess at a prompt.
+						A kind of piece is a file: a list of parts, each one marked required or not, and each
+						one carrying the question you are asked when nothing of yours goes into it. The model is
+						never asked to respect that file. It is asked one question — which part does this
+						section belong to — and the answer is checked against the file before anything is used;
+						the order is the file's and is computed, and the questions are printed from it word for
+						word. Those files live in the repository, versioned with the code. When one gives bad
+						results you edit it rather than guess at a prompt.
 					</p>
 				</section>
 
 				<section>
 					<h2>What it will not do</h2>
 					<p>
-						It will not invent a number, a unit or an identifier your notes do not contain — a
-						shortening that introduces one is discarded before you ever see it. It will not say
-						again in its own words what you already wrote: a draft that mostly repeats one of your
-						sections is a restatement, not a gap, and is dropped. It will not silently replace your
-						sentence with its own, and it will not call out to a model unless you press run. And it
-						will not hide what it did: the only way a word of its writing reaches your article is in
-						amber.
+						A shortening may only delete: every word in it has to be a word your sentence already
+						contains, so a clause that reads well and was never yours cannot survive the gate, and
+						neither can a number or unit your notes do not have. It will not choose the order — that
+						belongs to the pattern file and is computed here. It will not fill a part you left
+						empty. It will not call out to a model unless you press run. And there is no field in
+						what comes back that its own prose could arrive in, which is why nothing in your article
+						needs a colour for it.
 					</p>
 				</section>
 
