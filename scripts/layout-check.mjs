@@ -287,6 +287,11 @@ for (const size of SIZES) {
 			(card) => !card.textContent.includes("p99"),
 		),
 		asks: document.querySelectorAll(".gutter .ask").length,
+		// the spine: which part each of your sections is serving
+		slots: document.querySelectorAll(".gutter .slot").length,
+		// a part nothing was placed in, and a part filled by something hollow
+		missing: document.querySelectorAll('.gutter .ask[data-kind="missing"]').length,
+		thin: document.querySelectorAll('.gutter .ask[data-kind="thin"]').length,
 		// a question is asked in the gutter and never written into the article
 		inOutput: document.querySelectorAll(".md .ask, .md .pop, .md .was, .md .card").length,
 		vh: window.innerHeight,
@@ -300,8 +305,21 @@ for (const size of SIZES) {
 	check("every kind is on offer", offered.cards === 3, `${offered.cards} cards`);
 	check("and each card describes its kind", offered.named);
 	check("a card says nothing about your document", offered.static);
-	if (!stacked)
+	if (!stacked) {
 		check("a part with nothing in it asks you", offered.asks > 0, `${offered.asks} questions`);
+		// only the parts on screen are marked, and this fixture puts most of its
+		// sections in one repeatable part, so two is what the top of it shows
+		check(
+			"the spine says which part each section is serving",
+			offered.slots >= 2,
+			`${offered.slots} parts marked`,
+		);
+		check(
+			"a missing part and a hollow one are told apart",
+			offered.missing > 0 && offered.thin > 0,
+			`${offered.missing} missing, ${offered.thin} hollow`,
+		);
+	}
 	check("and asks in the gutter, never in the article", offered.inOutput === 0);
 	check(
 		"the panes still fit with the strip in them",
