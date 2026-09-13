@@ -334,6 +334,41 @@ button {
 	color: var(--cy);
 }
 
+/* the one control that spends a request, and the only thing here with weight */
+.go {
+	font-family: var(--mono);
+	font-size: inherit;
+	letter-spacing: 0.11em;
+	text-transform: uppercase;
+	color: var(--ink-2);
+	border: 1px solid var(--line-2);
+	border-radius: 99px;
+	padding: 4px 13px;
+	white-space: nowrap;
+}
+
+.go:hover {
+	border-color: var(--cy);
+	color: var(--cy);
+}
+
+/* it has something to say only when what you see is behind what you wrote */
+.go.waiting {
+	border-color: var(--cy);
+	color: var(--cy);
+}
+
+.go.busy {
+	border-color: var(--cy);
+	color: var(--cy);
+	opacity: 0.6;
+	cursor: progress;
+}
+
+.said.warn {
+	color: var(--am);
+}
+
 .hints button {
 	text-align: left;
 	font-size: 0.9rem;
