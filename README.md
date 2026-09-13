@@ -46,16 +46,19 @@ guessing at it once is worse than offering the ones it can actually make. They
 all arrived in the same request, so the strip above the article moves between
 them for nothing.
 
-Each is drawn as `outline()` gives it: the opening words of each section, in
-that arrangement's order. Choosing is reading your own text rather than a label
-for it. Nothing asks you to approve a reword or a move — the run applies, and
-the dial and the strip are how you read it afterwards.
+Each is drawn as `bars()` gives it: one bar per section, as wide as that section
+is long, in that arrangement's order. A section keeps its width wherever it
+lands, so two maps side by side show what moved rather than describing it;
+`outline()` is the same thing in words, on the tooltip. Nothing asks you to
+approve a reword or a move — the run applies, and the dial and the strip are how
+you read it afterwards.
 
-## What it did, over the thing it did it to
+## What it did, in the gutter
 
-Hover a shortened section and the word diff appears in a layer above it, inside
-the article pane but outside the article. It covers rather than displaces:
-`check:layout` asserts nothing of the kind is ever inside `.md`.
+Hover a shortened section and the word diff opens on that section's own thread,
+between the two texts. It belongs to neither: `check:layout` asserts nothing of
+the kind is ever inside `.md`, and nothing is ever written into the notes. The
+gutter is hidden below 880px, and the card goes with it.
 
 `copy markdown` in the article's header puts `toMarkdown()` on the clipboard.
 
