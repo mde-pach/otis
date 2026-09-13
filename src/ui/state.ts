@@ -9,7 +9,6 @@ import {
 	type Doc,
 	emptyDoc,
 	fits,
-	skeleton,
 	type Reach,
 	type Run,
 	reviveDoc,
@@ -17,6 +16,7 @@ import {
 	segment,
 	shapeOf,
 	share,
+	skeleton,
 	stale,
 	toMarkdown,
 } from "../core";
