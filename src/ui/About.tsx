@@ -36,10 +36,11 @@ export function About() {
 						have edited since the last run, the button says <em>run again</em>.
 					</p>
 					<p>
-						What comes back is a <strong>proposal, not an article</strong>. It is listed in your own
-						text — what it wants to move, what it would shorten and to what, what it would leave
-						out, and what it says the piece is missing — and each of those can be turned down on its
-						own before any of it is true. Turning down the order does not throw away the rest.
+						It comes back with <strong>two or three arrangements</strong>, not one, and applies the
+						first. The others are already paid for, so the strip above the article lets you move
+						between them for nothing — each is your own sections, opening words first, in the order
+						that arrangement would put them. Choosing a shape is reading your text, not reading a
+						label someone put on it.
 					</p>
 					<p>
 						Hover any sentence on either side and its counterpart lights up, with the thread between
@@ -54,9 +55,14 @@ export function About() {
 						out, and the layout is the Markdown in your own text.
 					</p>
 					<p>
-						Hovering a shortened sentence shows what it actually did: your words struck through
-						where they went, its words beside them. A colour can say a sentence was shortened; it
-						cannot say which words you lost.
+						Hover a shortened sentence and what it did appears <em>over</em> it: your words struck
+						through where they went, its words beside them. It covers rather than displaces — the
+						output is the output, and nothing is ever written into it to explain itself.
+					</p>
+					<p>
+						<strong>copy markdown</strong>, at the top of the article, puts the whole thing on your
+						clipboard as plain Markdown. Your words and its own, no marks, ready to paste wherever
+						you are publishing.
 					</p>
 				</section>
 
@@ -134,9 +140,9 @@ export function About() {
 						shortening that introduces one is discarded before you ever see it. It will not say
 						again in its own words what you already wrote: a draft that mostly repeats one of your
 						sections is a restatement, not a gap, and is dropped. It will not silently replace your
-						sentence with its own, it will not apply anything you have not agreed to, and it will
-						not call out to a model unless you press run. And it will not hide what it did: the only
-						way a word of its writing reaches your article is in amber.
+						sentence with its own, and it will not call out to a model unless you press run. And it
+						will not hide what it did: the only way a word of its writing reaches your article is in
+						amber.
 					</p>
 				</section>
 
