@@ -1,123 +1,106 @@
 # Otis
 
-A tool for turning a pile of notes into a technical article.
+A tool for turning a pile of notes into an article you would actually publish.
 
-**The rule the whole thing is built around: the tool never writes your prose.**
-It reorders, marks, measures and asks. Every sentence in the article traces back
-to a paragraph you wrote, and the only words the tool contributes are the
-headings — which are marked as its own, and which you can rewrite or delete.
+**Text in, text out.** Your notes are one string. The article is one Markdown
+string. Provenance is a set of ranges over the two. There are no fragments,
+blocks, slots or sections in the model — paste a single line and you get a
+single line back, with the parts that moved highlighted inside it.
 
-## What it looks like
+## The rule
 
-Three panes and a hover.
+Your text is the source of truth. Otis moves your sentences into an order that
+reads, shortens the ones that run long, and — when you let it — writes the parts
+your notes never covered. Each of those is a different colour on the page:
 
-**Notes**, on the left, is one editable document. It is the source of truth: you
-type, paste, and edit there, and nothing is filed away into cards. Paragraphs the
-article left out are dimmed and tagged `not used`; a paragraph that repeats
-another is tagged with the one it repeats.
+| | |
+|---|---|
+| plain | your words, exactly as you wrote them |
+| cyan | your sentence, shortened — no number or claim changed |
+| amber | written by Otis; edit it and it becomes yours |
+| louder amber | written, and further from what your notes support |
+| dimmed, on the left | something you wrote that the article is not using |
 
-**Article**, on the right, is the same text, reordered into a shape, as flowing
-prose. Your words carry no mark, because they are the norm. Only what changed is
-marked: altered words inside a rephrasing, and any heading the tool wrote.
-Hovering a paragraph shows the word-level diff against what you actually wrote —
-struck for dropped, boxed for added — and lights the source paragraph on the
-left. Everything in the pane is editable, and editing makes it yours.
+Nothing is captioned. Colour is the only thing that says where a word came
+from, and no other part of the interface is allowed either hue.
 
-**Shape**, the thin panel, is the only settings there are: which structure to use
-(or `Let it decide`), where the words come from as three percentages, and the
-model key.
+## Reach
 
-## Why it is shaped like this
+One dial, four settings, from the writer's side rather than the model's:
 
-Two objects, doing different jobs:
+- **as written** — your text, your order. Nothing is touched, and no key is needed.
+- **tidy** — shortens sentences that run long. Keeps your order, writes nothing.
+- **reorder** — moves things, and drops what does not earn its place.
+- **rebuild** — all of the above, and writes what is missing.
 
-| | Fragment | Block |
-|---|---|---|
-| lifetime | frozen, append-only | living, the draft |
-| what it is | a paragraph as you wrote it | that paragraph fitted to a position |
-| edits | never | freely |
+The same plan renders four ways. The lower settings do not ask for less; they
+refuse to use parts of what came back.
 
-Provenance only works if the thing you point back at cannot move, so fragments
-never change. A block's state (`verbatim`, `edited`, `reword-accepted`,
-`written-here`) is *derived* by comparing it to its fragment — never stored, so
-an edit that gets undone leaves no residue.
+## What the model is asked for
 
-Editing the notes reconciles rather than reimports: an unchanged paragraph keeps
-its id, an edited one becomes a new fragment, and a deleted one the draft is
-still using is kept so no block dangles.
+Never an article. It is given the writer's segments, what they said they are
+making, and a short reference note, and it answers in **indices**:
 
-The second line, which decides when the tool is allowed to speak:
+```ts
+interface Plan {
+  at: (number | null)[];                  // where each of your segments goes, or null
+  format: Record<number, string>;         // same words, markdown added
+  short: Record<number, string>;          // fewer words, same claims
+  written: { after: number; md: string; confidence: "high" | "low" }[];
+  because: string;
+}
+```
 
-- **Facts about your material** — counts, repeats, paragraphs left out — are
-  measurements. They appear unasked and cost nothing.
-- **Judgments about your writing** — which paragraph plays which role, what a
-  section should be called, a rewording — are opinions. They need your key.
+There is no way to express "put a heading here" or "make a section". The only
+text it may contribute arrives in `written`, and that is marked for as long as
+it survives.
 
-That is also the deterministic/probabilistic line. Without a key the tool still
-runs: the article keeps the order you wrote in, and every mark on the left still
-works.
-
-## Shapes are roles, headings are per article
-
-A shape is a list of *roles* with hints addressed to the model — `hook`,
-`what happened`, `cause`, `what changed` — never headings. Two post-mortems have
-the same roles; they almost never have the same headings. So the heading for each
-section is written for this article, out of the words in that section, and marked
-as the tool's until you touch it. "Introduction", "Background", "The problem" are
-rejected by construction: they are labels from a template, not headings for this
-piece.
+Nothing it returns is trusted. Every index is resolved against the segments,
+duplicates dropped, a `format` entry that changed a word is discarded as a lie,
+and a `short` that fails the faithfulness gate never reaches the page.
 
 ## The gate
 
-Any rewording is checked before it is ever shown:
+A shortening is checked before anything renders:
 
-- a reword that keeps almost none of the original's words is a rewrite, not a
-  reword, and is dropped;
-- a reword that introduces a number, a unit or a code identifier the original did
-  not contain has invented a fact, and is dropped.
+- one that keeps almost none of the original's words is a rewrite, not a shortening
+- one that introduces a number, unit or identifier the original did not contain
+  has invented a fact
 
-A failed suggestion is not rendered and then rejected. It never exists.
+A failed shortening is not rendered and then withdrawn. It never exists — the
+writer's own sentence stands, and they are not told about a suggestion that was
+never safe to make.
 
-## Engines
+**Formatting is not rewriting.** Comparison happens on plain text, so Otis may
+bold a figure, make a list or add a heading and the words stay marked as yours.
 
-Nothing is hard-wired to a model. The ports in `src/core/ports.ts` carry
-everything impure — `Embedder`, `Grouper`, `Labeler`, `ProjectStore`, `Judge` —
-so any of them can be swapped without touching the rules above.
+## Patterns
 
-Duplicate detection is lexical (containment plus trigram overlap) rather than
-embedding-based, and reports a checkable reason. The fixture in `fixtures/` is
-why: on 30 real paragraphs the embedding grouper scored two descriptions of the
-same event at 0.019 and merged a symptom with its own fix at 0.686. Same port,
-so swapping cost nothing above it. The measured numbers are in the comment at
-the top of `src/core/duplicates.ts`.
-
-Everything the model returns is checked before you see it. Ids are resolved: a
-layout naming a paragraph that does not exist, or claiming one twice, loses that
-id, and every paragraph the model never mentioned is reported as left out rather
-than quietly dropped.
+`patterns/*.md` — a few dozen words each on how a post-mortem, an internal note,
+an explanation or an essay tends to move. They are the whole of the context Otis
+reads about a kind of writing: versioned with the code, editable, and picked
+from the brief by word rather than by a model, so the choice is one you can
+check. When one gives bad results you change a file.
 
 ## Layout
 
 ```
 src/
-  core/          pure TypeScript — no DOM, no fetch, no storage. All the rules live here.
-    types.ts         Fragment, Block, Skeleton, Project
-    split.ts         document → fragments (code fences stay whole)
-    project.ts       import, reconciliation, selectors, orphans
-    draft.ts         slots, titles, ordering, markdown export
-    diff.ts          word-level diff + retention
-    duplicates.ts    lexical near-duplicate pairs, with a reason
-    provenance.ts    derived block state
-    reword.ts        the faithfulness gate
-    review.ts        frozen review rounds
-    skeletons.ts     the shapes, as roles and hints
-    ports.ts         Embedder / Grouper / Labeler / ProjectStore / Judge
-  adapters/      everything impure, each behind a port
-    embedder/        transformers.js in a worker
-    llm/             Claude client, structurer, titles, grouper, judge, reworder, key storage
+  core/          pure TypeScript — no DOM, no fetch, no storage
+    types.ts         Segment, Run, Plan, Reach, Doc
+    segments.ts      locating your text without cutting it up (fences stay whole)
+    plan.ts          a plan plus a reach becomes runs; the only place an article is made
+    markdown.ts      just enough: bold, italic, code, headings, list items
+    reword.ts        the faithfulness gate, and what counts as formatting
+    diff.ts          word diff, sequence and bag retention
+    ports.ts         Planner / DocStore
+  adapters/
+    llm/             Claude from the browser, and the planner
+    patterns/        the bundled reference notes
     store/           IndexedDB
-  ui/            Solid island: Notes, Article, Shape, Peek
+  ui/            Solid: Notes, Threads, Article, Capsule, About
   pages/         Astro shell
+patterns/        the reference notes themselves
 fixtures/        a fixed pile of notes to run changes against
 scripts/         the layout check
 ```
@@ -126,35 +109,33 @@ scripts/         the layout check
 
 ```sh
 bun install
-bun run dev       # http://localhost:4321/otis/
-bun test          # core domain, no browser needed
-bun run lint      # biome
-bun run format    # biome, writing fixes
+bun run dev            # http://localhost:4321/otis/
+bun test               # the core, no browser needed
+bun run lint           # biome
 bun run check:layout   # the panes, in a real browser, at five window sizes
 bun run build
 ```
 
-`check:layout` exists because a pane whose footer has slid off the bottom of the
-window looks perfectly fine in a screenshot of the top of the page — which is how
-the Organise button once shipped unreachable. It asserts what a screenshot
-cannot: no pane taller than the window, overflow scrolling inside the pane rather
-than taking the page with it, both footers still on screen after a long document
-has been organised, and the hover card still inside the window when you hover the
-far corner. Set `OTIS_CHROMIUM` to skip `playwright install` if you already have
-a chromium.
+`check:layout` exists because a pane whose chrome has slid off the bottom looks
+fine in a screenshot of the top of the page — which is how a button once shipped
+unreachable. It asserts what a screenshot cannot: no pane taller than the
+window, overflow scrolling inside the pane, the capsule reachable, every segment
+arriving in the article, the notes still one text node, and hovering lighting
+exactly one run and one thread. Set `OTIS_CHROMIUM` to skip `playwright install`
+if you already have a chromium.
 
 Your key and your notes stay in the browser: the key in `localStorage`, the
-project in IndexedDB. Nothing is sent anywhere but the model endpoint you
+document in IndexedDB. Nothing is sent anywhere but the model endpoint you
 configured.
 
 Deploys to GitHub Pages on push to `main` (`.github/workflows/deploy.yml`).
-Enable Pages → Source → GitHub Actions once, in the repo settings.
 
 ## Next
 
-- **Rewording in the pane** — the gate and the diff exist; the gesture that asks
-  for one does not.
-- **Review rounds on screen** — `src/core/review.ts` freezes rounds of measured
-  and judged items; nothing surfaces them yet.
-- **File as source of truth** — File System Access API, one `.otis.json` per
-  article, IndexedDB demoted to a cache.
+- **Confidence from the model rather than a label** — `written` runs carry a
+  `confidence` today because the planner is asked for one. Grounding it in
+  something measurable would be better.
+- **Numbers guard** — every figure in the output checked against the notes, and
+  an unmatched one flagged rather than styled.
+- **The file as the source of truth** — File System Access API, one `.otis.md`
+  per article, IndexedDB demoted to a cache.

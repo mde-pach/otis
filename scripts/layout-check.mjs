@@ -1,13 +1,12 @@
 /**
  * The layout check.
  *
- * A pane whose footer has slid off the bottom of the window looks fine in a
- * screenshot of the top of the page — which is how the Organise button once
- * shipped unreachable. So this asserts the things a screenshot cannot: that no
- * pane is taller than the window, that the overflow scrolls inside the pane
- * rather than taking the page with it, that both footers are still on screen
- * after a long document has been organised, and that the hover card stays
- * inside the window when you hover the far corner.
+ * Chrome that has slid off the bottom of the window looks fine in a screenshot
+ * of the top of the page — which is how a button once shipped unreachable. So
+ * this asserts what a screenshot cannot: no pane taller than the window, the
+ * overflow scrolling inside the pane rather than taking the page with it, the
+ * capsule reachable, every segment arriving in the article, the notes still one
+ * text node, and hovering lighting exactly one run and one thread.
  *
  * Run it against a deliberately brutal document at five window sizes:
  *
@@ -88,32 +87,28 @@ for (const size of SIZES) {
 
 	await page.evaluate((text) => {
 		const host = document.querySelector(".notes");
-		host.textContent = "";
-		for (const piece of text.split(/\n{2,}/).filter(Boolean)) {
-			const p = document.createElement("p");
-			p.textContent = piece;
-			host.append(p);
-		}
+		host.textContent = text;
+		host.dispatchEvent(new InputEvent("input", { bubbles: true }));
 		host.dispatchEvent(new FocusEvent("blur"));
 	}, document_);
-	await page.waitForTimeout(600);
+	await page.waitForTimeout(700);
 
-	// before anything else: can you even reach the button, without scrolling?
-	const button = await page.evaluate(() => {
-		const node = [...document.querySelectorAll("button")].find(
-			(b) => b.textContent.trim() === "Organise",
-		);
-		const box = node.getBoundingClientRect();
-		return { top: Math.round(box.top), bottom: Math.round(box.bottom), vh: window.innerHeight };
+	// the capsule is the only chrome: it must be reachable without scrolling
+	const capsule = await page.evaluate(() => {
+		const box = document.querySelector(".cap").getBoundingClientRect();
+		return {
+			top: Math.round(box.top),
+			bottom: Math.round(box.bottom),
+			right: Math.round(box.right),
+			vh: window.innerHeight,
+			vw: window.innerWidth,
+		};
 	});
 	check(
-		"Organise is on screen before any scrolling",
-		stacked || (button.bottom <= button.vh && button.top >= 0),
-		`bottom ${button.bottom} of ${button.vh}`,
+		"the capsule is on screen",
+		capsule.bottom <= capsule.vh + 1 && capsule.top >= 0 && capsule.right <= capsule.vw + 1,
+		`bottom ${capsule.bottom} of ${capsule.vh}`,
 	);
-
-	await page.click("button:has-text('Organise')");
-	await page.waitForTimeout(900);
 
 	const geometry = await page.evaluate((isStacked) => {
 		const vh = window.innerHeight;
@@ -122,15 +117,10 @@ for (const size of SIZES) {
 			pageScrolls: document.documentElement.scrollHeight > vh + 1,
 			panes: [...document.querySelectorAll(".pane")].map((pane) => {
 				const box = pane.getBoundingClientRect();
-				const foot = pane.querySelector(".pane-foot");
-				// stacked, a lower pane is reached by scrolling the page: bring it into view
-				if (isStacked && foot) foot.scrollIntoView({ block: "nearest" });
-				const footBox = foot?.getBoundingClientRect();
 				const scroll = pane.querySelector(".scroll");
 				return {
-					name: pane.querySelector(".pane-head span")?.textContent,
+					name: pane.querySelector(".ph")?.textContent,
 					height: Math.round(box.height),
-					footVisible: footBox ? footBox.bottom <= vh + 1 && footBox.top >= -1 : null,
 					scrolls: scroll ? scroll.scrollHeight > scroll.clientHeight : null,
 				};
 			}),
@@ -140,60 +130,61 @@ for (const size of SIZES) {
 	for (const pane of geometry.panes) {
 		check(
 			`${pane.name}: the pane fits the window`,
-			stacked || pane.height <= geometry.vh + 1,
+			pane.height <= geometry.vh + 1,
 			`${pane.height}px in ${geometry.vh}px`,
 		);
-		if (pane.footVisible !== null) check(`${pane.name}: its footer is on screen`, pane.footVisible);
-		if (pane.name !== "Shape")
-			check(`${pane.name}: overflow scrolls inside it`, pane.scrolls === true);
+		check(`${pane.name}: overflow scrolls inside it`, pane.scrolls === true);
 	}
-	if (!stacked) check("the page itself does not scroll", !geometry.pageScrolls);
+	check("the page itself never scrolls", !geometry.pageScrolls);
 
-	// the hover card, at the corner of the first paragraph and of the last
-	const cards = await page.evaluate(async () => {
-		const paragraphs = [...document.querySelectorAll(".doc p")];
-		const out = [];
-		for (const paragraph of [paragraphs[0], paragraphs[paragraphs.length - 1]]) {
-			paragraph.scrollIntoView({ block: "center" });
-			await new Promise((resolve) => setTimeout(resolve, 60));
-			const box = paragraph.getBoundingClientRect();
-			paragraph.dispatchEvent(
-				new MouseEvent("mouseenter", {
-					bubbles: true,
-					clientX: Math.round(box.right - 4),
-					clientY: Math.round(box.bottom - 4),
-				}),
-			);
-			await new Promise((resolve) => setTimeout(resolve, 120));
-			const card = document.querySelector(".peek")?.getBoundingClientRect();
-			out.push(
-				card
-					? {
-							inside:
-								card.left >= 0 &&
-								card.top >= 0 &&
-								card.right <= window.innerWidth + 1 &&
-								card.bottom <= window.innerHeight + 1,
-							where: [
-								Math.round(card.left),
-								Math.round(card.top),
-								Math.round(card.right),
-								Math.round(card.bottom),
-							],
-							window: [window.innerWidth, window.innerHeight],
-						}
-					: { inside: null },
-			);
-		}
-		return out;
-	});
-	cards.forEach((card, i) => {
+	// the article must carry the writer's text, and the threads must be drawn
+	const article = await page.evaluate(() => ({
+		runs: document.querySelectorAll("[data-run]").length,
+		threads: document.querySelectorAll(".gutter path").length,
+		notesNodes: document.querySelector(".notes").childNodes.length,
+	}));
+	check("every segment reaches the article", article.runs > 20, `${article.runs} runs`);
+	check(
+		"the notes stay one text node, never split into elements",
+		article.notesNodes <= 1,
+		`${article.notesNodes} nodes`,
+	);
+	if (!stacked)
 		check(
-			`the hover card stays inside the window (${i === 0 ? "first" : "last"} paragraph)`,
-			card.inside === true,
-			card.where ? `${card.where} in ${card.window}` : "no card appeared",
+			"a thread is drawn for each run",
+			article.threads >= article.runs,
+			`${article.threads} threads`,
 		);
+
+	// hovering lights the pair: the run, its origin, and the thread between them
+	const paired = await page.evaluate(async () => {
+		const run = document.querySelectorAll("[data-run]")[2];
+		run.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+		await new Promise((resolve) => setTimeout(resolve, 220));
+		const bright = [...document.querySelectorAll(".gutter path")].filter(
+			(p) => p.getAttribute("opacity") === "1",
+		).length;
+		return { runLit: document.querySelectorAll("[data-run].lit").length, bright };
 	});
+	check("hovering lights exactly one run", paired.runLit === 1, `${paired.runLit} lit`);
+	if (!stacked)
+		check("and brightens exactly one thread", paired.bright === 1, `${paired.bright} bright`);
+
+	// the about page has to be readable too
+	await page.click("nav button:nth-child(2)");
+	await page.waitForTimeout(250);
+	const about = await page.evaluate(() => {
+		const doc = document.querySelector(".doc");
+		return {
+			there: Boolean(doc),
+			scrolls: doc ? doc.scrollHeight > doc.clientHeight : false,
+			pageScrolls: document.documentElement.scrollHeight > window.innerHeight + 1,
+		};
+	});
+	check("about renders", about.there);
+	check("about scrolls inside itself, not the page", !about.pageScrolls);
+	await page.click("nav button:nth-child(1)");
+	await page.waitForTimeout(200);
 
 	check("no console errors", errors.length === 0, errors[0]);
 	await page.close();
