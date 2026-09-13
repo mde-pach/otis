@@ -1,0 +1,32 @@
+{
+	"id": "hiw-index-couvrant",
+	"kind": "how-it-works",
+	"lang": "fr",
+	"note": "explication complète, en français",
+	"sections": [
+		{
+			"part": "belief",
+			"text": "On présente souvent un index comme un raccourci qui évite de lire toute la table. C'est vrai, mais ça n'explique pas pourquoi ajouter une colonne inutile à un index peut diviser un temps de réponse par dix.",
+			"thin": "Les index font partie de ces sujets sur lesquels il circule beaucoup d'idées reçues et d'approximations, y compris chez des gens expérimentés, ce qui conduit régulièrement à des décisions qui ne sont pas forcément les meilleures compte tenu de ce qu'on cherche réellement à obtenir."
+		},
+		{
+			"part": "mechanism",
+			"text": "Un index contient les colonnes indexées et un pointeur vers la ligne. Trouver la ligne dans l'index est rapide ; aller chercher la ligne elle-même est un deuxième accès, sur une autre page du disque.",
+			"thin": "L'index sert à retrouver les lignes plus vite."
+		},
+		{
+			"part": "mechanism",
+			"text": "Si toutes les colonnes demandées par la requête sont déjà dans l'index, ce deuxième accès disparaît : le moteur répond sans jamais toucher la table. C'est ce qu'on appelle un index couvrant."
+		},
+		{
+			"part": "example",
+			"text": "Un SELECT statut, date sur une table de commandes avec un index sur (client_id) fait 1 + N accès. Le même index en (client_id, statut, date) en fait 1, et la requête passe de 340 ms à 12 ms sur notre table de 4 millions de lignes.",
+			"thin": "On le voit bien sur des requêtes courantes."
+		},
+		{
+			"part": "limit",
+			"text": "Chaque colonne ajoutée grossit l'index et ralentit les écritures. Un index couvrant se justifie pour une requête qu'on exécute mille fois par minute, pas pour celle du rapport mensuel.",
+			"thin": "Évidemment il y a des inconvénients."
+		}
+	]
+}

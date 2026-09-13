@@ -1,0 +1,36 @@
+{
+	"id": "hiw-connection-pool",
+	"kind": "how-it-works",
+	"lang": "en",
+	"note": "complete explanation of a mechanism",
+	"sections": [
+		{
+			"part": "belief",
+			"text": "Most people read a connection pool as a performance trick: reuse the socket, skip the handshake. That is true and it is the least interesting thing about it. A pool is mainly a queue with a hard limit on how much work the database will ever see at once.",
+			"thin": "People often misunderstand what a connection pool is really for."
+		},
+		{
+			"part": "mechanism",
+			"text": "Checking out a connection is an acquire on a semaphore of fixed size. If all of them are held, your request does not fail — it waits, and the wait is invisible to everything measuring the database.",
+			"thin": "There is a fairly involved mechanism that takes care of handing out connections to the various parts of the application that need them, and of taking them back afterwards, so that the whole thing works correctly without anyone having to think about it directly."
+		},
+		{
+			"part": "mechanism",
+			"text": "Hold time is therefore the variable that matters, not connection count. A pool of 40 with a 5ms hold serves 8,000 requests a second; the same pool with a 500ms hold serves 80."
+		},
+		{
+			"part": "example",
+			"text": "This is why one slow endpoint takes down fast ones that share nothing with it. An export holding a connection for 60 seconds occupies 1/40th of the whole application's database capacity for a minute, and the login page queues behind it.",
+			"thin": "You come across this sort of situation relatively often in real systems, in various forms and at various scales, and it is the kind of thing that becomes quite familiar once you have spent a bit of time watching what actually happens in production."
+		},
+		{
+			"part": "limit",
+			"text": "None of this applies once you put a proxy like PgBouncer in transaction mode in front, because the pool your application holds and the pool the database sees stop being the same object.",
+			"thin": "There are of course some cases where this does not apply."
+		},
+		{
+			"part": "consequence",
+			"text": "So the useful alarm is not connections-in-use but time-waiting-for-a-connection, and the useful fix for saturation is usually shortening hold time rather than raising the limit."
+		}
+	]
+}

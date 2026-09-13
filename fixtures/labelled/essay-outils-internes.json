@@ -1,0 +1,36 @@
+{
+	"id": "essay-outils-internes",
+	"kind": "essay",
+	"lang": "fr",
+	"note": "essai complet, en français",
+	"sections": [
+		{
+			"part": "ground",
+			"text": "Toutes les équipes que je connais finissent par écrire leurs propres outils internes : un script de déploiement, un générateur de fixtures, un tableau de bord maison. Et toutes finissent par s'en plaindre.",
+			"thin": "Les équipes écrivent souvent leurs propres outils."
+		},
+		{
+			"part": "claim",
+			"text": "Un outil interne sans propriétaire nommé n'est pas un outil, c'est une dette que personne n'a encore déclarée."
+		},
+		{
+			"part": "reason",
+			"text": "Un outil partagé par tout le monde est maintenu par personne : chacun corrige ce qui le bloque et repart, et au bout de deux ans le script de déploiement contient quatre façons différentes de faire la même chose selon qui est passé en dernier.",
+			"thin": "Plusieurs considérations peuvent être avancées à l'appui de cette position, et elles se recoupent suffisamment pour qu'on puisse raisonnablement considérer qu'il ne s'agit pas d'un phénomène isolé ou propre à une organisation en particulier."
+		},
+		{
+			"part": "reason",
+			"text": "Le coût ne se voit pas dans le temps passé sur l'outil, il se voit dans le temps passé à le contourner. Chez nous, trois personnes avaient chacune leur alias local pour éviter une étape cassée, et personne n'avait signalé l'étape."
+		},
+		{
+			"part": "doubt",
+			"text": "On peut objecter qu'un propriétaire nommé, c'est un goulot d'étranglement, et que la propriété collective est justement ce qui permet à n'importe qui de corriger un bug sans attendre.",
+			"thin": "Certains ne seront pas d'accord."
+		},
+		{
+			"part": "answer",
+			"text": "Un propriétaire n'est pas un péage : c'est quelqu'un dont le nom figure quelque part et qui répond quand l'outil casse. N'importe qui peut toujours corriger ; la différence est qu'il existe une personne pour qui l'absence de correction est un problème.",
+			"thin": "Mais cette objection ne tient pas vraiment."
+		}
+	]
+}

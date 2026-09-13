@@ -1,0 +1,36 @@
+{
+	"id": "pm-import-doublons",
+	"kind": "post-mortem",
+	"lang": "fr",
+	"note": "post-mortem complet, en français",
+	"sections": [
+		{
+			"part": "observed",
+			"text": "Le 12 juin à 03:20, l'import nocturne des catalogues fournisseurs a créé 18 400 fiches produit en double. Personne ne l'a vu avant l'ouverture des bureaux.",
+			"thin": "Un matin de juin l'import de la nuit s'est mal passé."
+		},
+		{
+			"part": "cost",
+			"text": "Pendant six heures, la recherche renvoyait deux fois le même produit à des prix différents. 230 commandes sont parties sur la fiche en double, dont 40 avec un prix périmé, pour un écart de 1 900 euros à notre charge.",
+			"thin": "L'incident a eu des répercussions non négligeables sur une partie de nos utilisateurs pendant toute la matinée, aussi bien du côté de la recherche que du côté de la commande, et le support a reçu un volume de sollicitations sensiblement plus élevé que d'habitude sur cette période."
+		},
+		{
+			"part": "cause",
+			"text": "La clé d'unicité de l'import est la référence fournisseur. Un des fournisseurs a livré son fichier avec la référence en minuscules ce soir-là, et notre comparaison est sensible à la casse."
+		},
+		{
+			"part": "hidden",
+			"text": "L'import ne compte que les lignes traitées, jamais les lignes créées par rapport aux lignes mises à jour. Un import qui crée 18 400 fiches au lieu d'en modifier 18 400 ressemble donc exactement à un import normal dans les logs.",
+			"thin": "On ne surveillait pas assez cet import."
+		},
+		{
+			"part": "fix",
+			"text": "La comparaison est passée en insensible à la casse et aux espaces le 13 juin, et les doublons ont été fusionnés dans la nuit du 14. C'est en production depuis."
+		},
+		{
+			"part": "detection",
+			"text": "L'import écrit maintenant le ratio créations/mises à jour à chaque exécution, et s'arrête de lui-même si les créations dépassent 5 % du catalogue.",
+			"thin": "Nous allons mettre en place un suivi plus rigoureux de cet import à l'avenir et l'équipe est d'accord sur le fait qu'il s'agit d'un point à améliorer en priorité, de manière à être en mesure de réagir beaucoup plus vite si une situation comparable venait à se reproduire."
+		}
+	]
+}

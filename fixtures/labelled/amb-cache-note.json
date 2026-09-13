@@ -1,0 +1,21 @@
+{
+	"id": "amb-cache-note",
+	"accepts": ["internal-note", "how-it-works"],
+	"lang": "en",
+	"note": "a team note that spends half its length explaining a mechanism. Used only for pick precision.",
+	"sections": [
+		{ "text": "Read-through caching is on for the product catalogue as of this morning." },
+		{
+			"text": "Worth knowing how it behaves: a miss under load is more expensive than no cache at all, because you pay the lookup and then pay the origin anyway."
+		},
+		{
+			"text": "That means the dangerous moment is not steady state, it is the thirty seconds after a deploy flushes the keys — every request misses at once and the origin sees a spike it never sees otherwise."
+		},
+		{
+			"text": "Practically: if you are deploying this week, deploy outside the lunch peak, and tell me if you see origin latency above 300ms."
+		},
+		{
+			"text": "We will move to staggered expiry next sprint, which removes the flush spike entirely."
+		}
+	]
+}

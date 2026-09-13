@@ -1,0 +1,40 @@
+{
+	"id": "pm-pool-exhaustion",
+	"kind": "post-mortem",
+	"lang": "en",
+	"note": "complete post-mortem, slow burn rather than an outage",
+	"sections": [
+		{
+			"part": "observed",
+			"text": "Between 12 and 19 August, /reports timed out for a growing share of requests each afternoon — 0.4% on the Monday, 11% by the Friday. Mornings were clean.",
+			"thin": "Over the course of roughly a week, a number of users started to report that things were not performing as well as they normally would when they were trying to use the reporting functionality, particularly at certain times of day, and the degradation appeared to get progressively more noticeable as the week went on."
+		},
+		{
+			"part": "cost",
+			"text": "Around 3,400 report exports failed over the week. Two customers on annual plans opened escalations, and one of them missed a board deadline they told us about afterwards.",
+			"thin": "This was disruptive for a portion of our customer base and created a certain amount of frustration, especially for those who rely on this part of the product as part of their regular workflow, and a few of them reached out to let us know that it was affecting their ability to get things done."
+		},
+		{
+			"part": "cause",
+			"text": "A change on 11 August moved report generation off the queue and into the request path. Each export holds a database connection for the full 30 to 90 seconds it takes to build.",
+			"thin": "Something we shipped earlier in the month turned out to be a bad idea."
+		},
+		{
+			"part": "cause",
+			"text": "The pool is 40 connections per instance. Afternoon traffic is when exports cluster, so by 14:00 every connection was held by an export and ordinary requests queued behind them until they timed out."
+		},
+		{
+			"part": "hidden",
+			"text": "Every dashboard we look at is an average over 24 hours, and a four-hour window at 11% does not move a daily average enough to cross any threshold. The database itself was never unhealthy — CPU sat at 30%."
+		},
+		{
+			"part": "fix",
+			"text": "Exports went back onto the queue on 20 August and the pool was raised to 60 as a margin. Both are live in production."
+		},
+		{
+			"part": "detection",
+			"text": "Pool saturation is now a first-class metric with an alert at 80% sustained for five minutes, and the latency dashboards are cut by hour of day rather than by day.",
+			"thin": "Going forward the team intends to keep a considerably closer eye on this area of the system and has agreed that improving our visibility here should be a priority, so that if something similar were to begin happening again we would be in a much better position to notice it early rather than late."
+		}
+	]
+}

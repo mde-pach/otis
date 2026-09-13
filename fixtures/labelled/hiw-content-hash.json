@@ -1,0 +1,31 @@
+{
+	"id": "hiw-content-hash",
+	"kind": "how-it-works",
+	"lang": "en",
+	"note": "complete explanation, different subject",
+	"sections": [
+		{
+			"part": "belief",
+			"text": "The usual mental model of a cache-busting hash is that it stops browsers serving stale files. That is the effect, not the mechanism, and the difference shows up the first time a deploy makes every user re-download everything."
+		},
+		{
+			"part": "mechanism",
+			"text": "The hash is computed over the file's bytes, so the URL is a function of the content. Two builds of an unchanged file produce the same URL, which is what lets the cache header say immutable and mean it.",
+			"thin": "A hash is generated and put into the filename somehow."
+		},
+		{
+			"part": "mechanism",
+			"text": "That property is transitive and it is where builds go wrong: if a bundle embeds the hashed names of its imports, changing a leaf file changes its name, which changes the parent's bytes, which changes the parent's name, all the way to the entry point."
+		},
+		{
+			"part": "example",
+			"text": "Fix one typo in a footer component and watch the network tab: the footer chunk, the shared chunk that imports it, and the entry bundle all come down again, while the 200KB charting library keeps its name and stays cached.",
+			"thin": "In practice this is something you end up noticing fairly naturally over the course of successive deploys, and it becomes a familiar consideration once you have got into the habit of paying attention to what is actually going on in that area."
+		},
+		{
+			"part": "limit",
+			"text": "It says nothing about correctness across a deploy. A user holding an old entry point can still request a chunk that no longer exists on the server, which is why deleting old assets immediately produces the chunk-load errors everyone blames on the CDN.",
+			"thin": "There are limits to what this can do."
+		}
+	]
+}

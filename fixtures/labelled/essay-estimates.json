@@ -1,0 +1,40 @@
+{
+	"id": "essay-estimates",
+	"kind": "essay",
+	"lang": "en",
+	"note": "complete essay: it argues, it answers an objection",
+	"sections": [
+		{
+			"part": "ground",
+			"text": "Every team I have worked on estimates in points, and every one of them has had the conversation about what a point is worth in days. The conversation always ends the same way: points are not days, and then someone divides the sprint total by ten anyway."
+		},
+		{
+			"part": "claim",
+			"text": "An estimate that is used to hold someone accountable stops being an estimate. It becomes a promise, and people price promises defensively.",
+			"thin": "It seems to me that there is a genuinely significant underlying problem in the way these things end up being used in practice within organisations, one that would deserve rather more serious attention than it usually gets."
+		},
+		{
+			"part": "reason",
+			"text": "The moment a number appears on a slide next to a name, the cost of being wrong is asymmetric: too high and nobody notices, too low and you are explaining yourself in public. Every individual rationally inflates, and the aggregate is useless in a direction nobody can correct for.",
+			"thin": "There are good reasons to think this is what happens."
+		},
+		{
+			"part": "reason",
+			"text": "You can watch it happen inside one team. Ours doubled its average story size over two quarters without the stories getting bigger — the only thing that changed was that the burndown started appearing in a monthly review."
+		},
+		{
+			"part": "doubt",
+			"text": "The obvious answer is that this is a management failure rather than an estimation failure: estimate honestly, and push back when the number is misused. Plenty of teams do exactly that and their numbers stay usable.",
+			"thin": "Naturally, not everyone will share this point of view, and there are a number of arguments that point in a different direction which it would probably be dishonest to pass over entirely in the course of this discussion."
+		},
+		{
+			"part": "answer",
+			"text": "That works while the person doing the pushing back is still there. It is a defence held by one individual against a standing incentive, and it fails on the day they leave — which is the definition of a thing that is not actually fixed.",
+			"thin": "But I do not think that objection really holds up."
+		},
+		{
+			"part": "condition",
+			"text": "This only bites where estimates are visible above the team. A number that never leaves the room it was made in stays a number, and those teams should keep estimating exactly as they do."
+		}
+	]
+}

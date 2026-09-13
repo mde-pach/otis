@@ -1,0 +1,35 @@
+{
+	"id": "essay-comments",
+	"kind": "essay",
+	"lang": "en",
+	"note": "complete essay, a smaller and more concrete claim",
+	"sections": [
+		{
+			"part": "ground",
+			"text": "The standard advice about comments is that they should say why, not what. It is good advice and it is taught as though the hard part were knowing the rule.",
+			"thin": "There is a common piece of advice about writing comments."
+		},
+		{
+			"part": "claim",
+			"text": "The comments worth writing are the ones recording a decision you argued about, and almost nothing else survives contact with a codebase."
+		},
+		{
+			"part": "reason",
+			"text": "A comment explaining what the code does has a half-life of about one refactor. A comment saying we tried the obvious thing and it deadlocked under load is still true in five years, because it is about the world rather than about the code.",
+			"thin": "There are several considerations that can be put forward in support of this idea, and taken together they paint a reasonably coherent picture of the situation as it can be observed in most software development contexts."
+		},
+		{
+			"part": "reason",
+			"text": "It also explains why comment rot feels worse than missing comments: a stale what-comment actively lies, whereas a stale why-comment at worst describes a road not taken."
+		},
+		{
+			"part": "doubt",
+			"text": "A reasonable objection is that newcomers need the what-comments most, and writing for the reader who already knows the system is how codebases become unapproachable."
+		},
+		{
+			"part": "answer",
+			"text": "That need is real but it is a documentation need, not a comment need. A newcomer reads a file top to bottom once; a maintainer reads a hunk in a diff a hundred times, and the comment is in the second person's field of view, not the first's.",
+			"thin": "I think there is an answer to that."
+		}
+	]
+}

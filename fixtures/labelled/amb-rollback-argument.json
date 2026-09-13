@@ -1,0 +1,23 @@
+{
+	"id": "amb-rollback-argument",
+	"accepts": ["post-mortem", "essay"],
+	"lang": "en",
+	"note": "an incident write-up that spends most of its length arguing a general claim. Used only for pick precision.",
+	"sections": [
+		{
+			"text": "We rolled back the search change on 3 May after 40 minutes, and the rollback took longer than the incident would have."
+		},
+		{
+			"text": "Reverting the deploy was two minutes. Undoing the index migration it had already run was 34, and we did it by hand under pressure at midnight."
+		},
+		{
+			"text": "Everyone knows a rollback plan is not a plan until it has been run. Almost nobody runs it, because running it costs a scheduled outage to fix a problem that has not happened."
+		},
+		{
+			"text": "The only rollback procedures I have seen work on the night are the ones that were exercised on an afternoon when nothing was wrong."
+		},
+		{
+			"text": "So I think the rule is not write a rollback plan. It is that a rollback plan you have never executed should be assumed not to exist, and planned around accordingly."
+		}
+	]
+}
