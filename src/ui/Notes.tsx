@@ -8,7 +8,59 @@ import { segments, setNotes, state } from "./state";
  * Highlight API, which paints ranges without touching the DOM — so a single
  * line stays a single line, the caret is never clobbered, and a sentence inside
  * that line can still be lit.
+ *
+ * Keeping that true is most of this file. A browser answers Enter and a paste
+ * by building `<div>`s, and `textContent` then reads those back with every line
+ * break silently gone — which is how a pasted document once arrived as one
+ * unbroken string, with no sections, no threads and nothing to highlight. So
+ * line breaks are inserted as text, and anything the browser builds anyway is
+ * read properly and flattened back with the caret put where it was.
  */
+
+/** elements a browser uses to mean "a new line starts here" */
+const LINE = /^(DIV|P|LI|H[1-6]|BLOCKQUOTE|PRE|TR|SECTION|ARTICLE|UL|OL|TABLE)$/;
+
+/**
+ * What the text really says, line breaks and all. Never `textContent`.
+ *
+ * Breaks are owed rather than written, so an empty `<div><br></div>` — which is
+ * how a browser spells a blank line — is worth one line of its own, while the
+ * placeholder `<br>` a browser parks at the end of an element is worth nothing,
+ * and a block nested in a block does not count twice.
+ */
+function plainOf(node: Node): string {
+	let out = "";
+	let owed = 0;
+
+	const put = (text: string) => {
+		if (!text) return;
+		out += "\n".repeat(owed);
+		owed = 0;
+		out += text;
+	};
+
+	const walk = (parent: Node) => {
+		for (const child of Array.from(parent.childNodes)) {
+			if (child.nodeType === Node.TEXT_NODE) {
+				put(child.nodeValue ?? "");
+				continue;
+			}
+			if (child.nodeType !== Node.ELEMENT_NODE) continue;
+			const element = child as HTMLElement;
+
+			if (element.tagName === "BR") {
+				owed += 1;
+				continue;
+			}
+			if (LINE.test(element.tagName) && out) owed = Math.max(owed, 1);
+			walk(element);
+		}
+	};
+
+	walk(node);
+	return out;
+}
+
 export function Notes(props: {
 	lit: number | null;
 	dropped: { start: number; end: number }[];
@@ -18,9 +70,48 @@ export function Notes(props: {
 
 	const paint = () => {
 		if (!host || host.contains(document.activeElement)) return;
-		if (host.textContent === state.doc.notes) return;
+		if (plainOf(host) === state.doc.notes) return;
 		host.textContent = state.doc.notes;
 	};
+
+	/** Where the caret is, counted in the text the writer can see. */
+	const caret = (): number | null => {
+		const selection = document.getSelection();
+		if (!host || !selection || selection.rangeCount === 0) return null;
+		const at = selection.getRangeAt(0);
+		if (!host.contains(at.startContainer)) return null;
+		const before = document.createRange();
+		before.selectNodeContents(host);
+		before.setEnd(at.startContainer, at.startOffset);
+		return plainOf(before.cloneContents()).length;
+	};
+
+	/** One text node again, with the caret back where the writer left it. */
+	const flatten = (text: string, at: number | null) => {
+		if (!host) return;
+		host.textContent = text;
+		const node = host.firstChild;
+		if (at === null || !node) return;
+		const put = document.createRange();
+		put.setStart(node, Math.min(at, node.textContent?.length ?? 0));
+		put.collapse(true);
+		const selection = document.getSelection();
+		selection?.removeAllRanges();
+		selection?.addRange(put);
+	};
+
+	const read = () => {
+		if (!host) return;
+		const text = plainOf(host);
+		const single =
+			host.childNodes.length === 0 ||
+			(host.childNodes.length === 1 && host.firstChild?.nodeType === Node.TEXT_NODE);
+		if (!single) flatten(text, caret());
+		void setNotes(text);
+	};
+
+	/** A line break is a character, not an element. */
+	const type = (text: string) => document.execCommand("insertText", false, text);
 
 	/** Ranges, not spans: this is the whole reason the text stays intact. */
 	const range = (start: number, end: number): Range | null => {
@@ -82,9 +173,27 @@ export function Notes(props: {
 					spellcheck={false}
 					onMouseMove={find}
 					onMouseLeave={() => props.onHover(null)}
-					onInput={(event) => void setNotes(event.currentTarget.textContent ?? "")}
+					onBeforeInput={(event) => {
+						const kind = (event as InputEvent).inputType;
+						if (kind === "insertParagraph" || kind === "insertLineBreak") {
+							event.preventDefault();
+							type("\n");
+						}
+					}}
+					onPaste={(event) => {
+						event.preventDefault();
+						const text = event.clipboardData?.getData("text/plain") ?? "";
+						type(text.replace(/\r\n?/g, "\n"));
+					}}
+					onDrop={(event) => {
+						const text = event.dataTransfer?.getData("text/plain");
+						if (text === undefined) return;
+						event.preventDefault();
+						type(text.replace(/\r\n?/g, "\n"));
+					}}
+					onInput={read}
 					onBlur={() => {
-						void setNotes(host?.textContent ?? "");
+						read();
 						paint();
 					}}
 				/>
