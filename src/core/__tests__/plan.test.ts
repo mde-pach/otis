@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { build, fits, read, settle, share, stale, toMarkdown } from "../plan";
+import { build, fits, outline, share, stale, toMarkdown } from "../plan";
 import type { Plan } from "../types";
 
 const NOTES = `The cache was doing exactly what we asked it to do.
@@ -10,7 +10,7 @@ Nobody experiences the average.`;
 
 const plan: Plan = {
 	basis: NOTES,
-	at: [2, 0, 1],
+	shapes: [{ name: "one", at: [2, 0, 1], because: "led with the numbers" }],
 	format: { 1: "**p99 went from 180ms to 410ms** in the week after we shipped it." },
 	short: {},
 	written: [
@@ -21,7 +21,6 @@ const plan: Plan = {
 			because: "no cost stated",
 		},
 	],
-	because: "led with the numbers",
 };
 
 describe("reach", () => {
@@ -80,7 +79,11 @@ describe("what counts as a change", () => {
 
 describe("dropping", () => {
 	test("a segment with no position is reported, not deleted", () => {
-		const { runs, dropped } = build(NOTES, { ...plan, at: [0, 1, null] }, 2);
+		const { runs, dropped } = build(
+			NOTES,
+			{ ...plan, shapes: [{ name: "one", at: [0, 1, null], because: "" }] },
+			2,
+		);
 		expect(runs).toHaveLength(2);
 		expect(dropped).toHaveLength(1);
 		expect(dropped[0]?.text).toBe("Nobody experiences the average.");
@@ -158,11 +161,10 @@ describe("a document typed as one line", () => {
 
 	const inOrder: Plan = {
 		basis: LINE,
-		at: [0, 1, 2],
+		shapes: [{ name: "one", at: [0, 1, 2], because: "led with the numbers" }],
 		format: {},
 		short: {},
 		written: [],
-		because: "left it alone",
 	};
 
 	test("its sentences are sections the plan can move", () => {
@@ -172,72 +174,55 @@ describe("a document typed as one line", () => {
 	});
 
 	test("the article is those sections, in the plan's order, and nothing else", () => {
-		const moved: Plan = { ...inOrder, at: [1, 2, 0] };
+		const moved: Plan = { ...inOrder, shapes: [{ name: "moved", at: [1, 2, 0], because: "" }] };
 		const out = toMarkdown(build(LINE, moved, 2).runs);
 		expect(out.startsWith("Nobody experiences the average.")).toBe(true);
 		expect(out.split("\n\n")).toHaveLength(3);
 	});
 });
 
-describe("the proposal, before any of it is true", () => {
-	test("it reads as a list of things you can say no to", () => {
-		const it = read(NOTES, { ...plan, short: { 0: "The cache did exactly what we asked." } });
-		expect(it.moved).toBe(true);
-		expect(it.order.map((o) => o.index)).toEqual([1, 2, 0]);
-		expect(it.short.map((s) => s.index)).toEqual([0]);
-		expect(it.written[0]?.because).toBe("no cost stated");
-		expect(it.drop).toHaveLength(0);
+describe("the shapes a run comes back with", () => {
+	const two: Plan = {
+		basis: NOTES,
+		shapes: [
+			{ name: "les chiffres d'abord", at: [2, 0, 1], because: "the numbers carry it" },
+			{ name: "comme tu l'as écrit", at: [0, 1, 2], because: "your order already reads" },
+			{ name: "sans le détail", at: [0, null, 1], because: "the middle is for another piece" },
+		],
+		format: {},
+		short: {},
+		written: [],
+	};
+
+	test("the article opens in the first, and nothing was asked twice", () => {
+		expect(build(NOTES, two, 2).runs.map((r) => r.fromIndex)).toEqual([1, 2, 0]);
 	});
 
-	test("a shortening that fails the gate is never offered", () => {
-		const liar: Plan = { ...plan, short: { 1: "p99 went from 180ms to 900ms." } };
-		expect(read(NOTES, liar).short).toHaveLength(0);
+	test("switching shape is the same plan, read another way", () => {
+		expect(build(NOTES, two, 2, 1).runs.map((r) => r.fromIndex)).toEqual([0, 1, 2]);
 	});
 
-	test("something it wants to leave out is listed as that", () => {
-		const it = read(NOTES, { ...plan, at: [0, 1, null] });
-		expect(it.drop.map((d) => d.text)).toEqual(["Nobody experiences the average."]);
-	});
-});
-
-describe("refusing part of a proposal", () => {
-	const tighter: Plan = { ...plan, short: { 0: "The cache did exactly what we asked." } };
-
-	test("refusing the order keeps the shortening and the draft", () => {
-		const settled = settle(NOTES, tighter, { m: true });
-		expect(settled.at).toEqual([0, 1, 2]);
-		expect(settled.short[0]).toBeDefined();
-		expect(settled.written).toHaveLength(1);
+	test("a shape that leaves something out reports it rather than deleting it", () => {
+		const { runs, dropped } = build(NOTES, two, 2, 2);
+		expect(runs.map((r) => r.fromIndex)).toEqual([0, 2]);
+		expect(dropped.map((d) => d.text)).toEqual([
+			"p99 went from 180ms to 410ms in the week after we shipped it.",
+		]);
 	});
 
-	test("refusing a shortening leaves your sentence standing", () => {
-		const settled = settle(NOTES, tighter, { s0: true });
-		const { runs } = build(NOTES, settled, 2);
-		expect(runs.find((r) => r.fromIndex === 0)?.kind).toBe("kept");
-		expect(runs.find((r) => r.fromIndex === 0)?.md).toBe(
-			"The cache was doing exactly what we asked it to do.",
-		);
+	test("asking for a shape that is not there lands on the nearest one", () => {
+		expect(build(NOTES, two, 2, 9).runs.map((r) => r.fromIndex)).toEqual([0, 2]);
 	});
 
-	test("refusing a draft means it is never written", () => {
-		const settled = settle(NOTES, tighter, { w0: true });
-		expect(build(NOTES, settled, 3).runs.some((r) => r.kind === "written")).toBe(false);
+	test("an outline is your own words, in that shape's order", () => {
+		expect(outline(NOTES, two.shapes[0] as never)).toEqual([
+			"p99 went from 180ms to…",
+			"Nobody experiences the average.",
+			"The cache was doing exactly…",
+		]);
 	});
 
-	test("refusing a drop puts the section back in the article", () => {
-		const cut: Plan = { ...plan, at: [0, 1, null] };
-		expect(build(NOTES, cut, 2).dropped).toHaveLength(1);
-		const settled = settle(NOTES, cut, { d2: true });
-		const { runs, dropped } = build(NOTES, settled, 2);
-		expect(dropped).toHaveLength(0);
-		expect(runs.map((r) => r.fromIndex)).toEqual([0, 1, 2]);
-	});
-
-	test("refusing everything is your words, in your order — markdown is not a word", () => {
-		const settled = settle(NOTES, tighter, { m: true, s0: true, w0: true });
-		const { runs } = build(NOTES, settled, 3);
-		expect(runs.every((r) => r.kind === "kept")).toBe(true);
-		expect(runs.map((r) => r.fromIndex)).toEqual([0, 1, 2]);
-		expect(runs[1]?.md).toContain("**p99");
+	test("a shape that leaves a section out leaves it out of the outline too", () => {
+		expect(outline(NOTES, two.shapes[2] as never)).toHaveLength(2);
 	});
 });
