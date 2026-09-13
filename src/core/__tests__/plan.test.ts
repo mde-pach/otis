@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { build, fits, share, stale, toMarkdown } from "../plan";
+import { build, fits, paragraphs, share, stale, toMarkdown } from "../plan";
 import type { Plan } from "../types";
 
 const NOTES = `The cache was doing exactly what we asked it to do.
@@ -149,5 +149,70 @@ describe("toMarkdown", () => {
 		const out = toMarkdown(build(NOTES, plan, 2).runs);
 		expect(out.split("\n\n")).toHaveLength(3);
 		expect(out).toContain("**p99");
+	});
+});
+
+describe("a paragraph typed as one line", () => {
+	const LINE =
+		"The cache was doing exactly what we asked it to do. p99 went from 180ms to 410ms in the week after we shipped it. Nobody experiences the average.";
+
+	const inOrder: Plan = {
+		basis: LINE,
+		at: [0, 1, 2],
+		format: {},
+		short: {},
+		written: [],
+		because: "left it alone",
+	};
+
+	test("its sentences are movable pieces, not one lump", () => {
+		const { runs } = build(LINE, inOrder, 2);
+		expect(runs).toHaveLength(3);
+		expect(runs.every((r) => r.kind === "kept")).toBe(true);
+	});
+
+	test("left in order it is still one paragraph, not three", () => {
+		expect(paragraphs(build(LINE, inOrder, 2).runs)).toHaveLength(1);
+		expect(toMarkdown(build(LINE, inOrder, 2).runs)).toBe(LINE);
+	});
+
+	test("reordered inside itself it is still one paragraph, in the new order", () => {
+		const moved: Plan = { ...inOrder, at: [1, 2, 0] };
+		const out = toMarkdown(build(LINE, moved, 2).runs);
+		expect(out.startsWith("Nobody experiences the average.")).toBe(true);
+		expect(out.split("\n\n")).toHaveLength(1);
+	});
+
+	test("a sentence carried into another paragraph goes with it, not home", () => {
+		const notes = `${LINE}\n\nRedis was healthy the entire time.`;
+		// the last sentence of the line is lifted out and put after the second paragraph
+		const lifted: Plan = {
+			basis: notes,
+			at: [0, 1, 3, 2],
+			format: {},
+			short: {},
+			written: [],
+			because: "moved the punchline to the end",
+		};
+		const groups = paragraphs(build(notes, lifted, 2).runs);
+		expect(groups.map((g) => g.length)).toEqual([2, 1, 1]);
+		expect(groups.at(-1)?.[0]?.md).toBe("Nobody experiences the average.");
+	});
+
+	test("what the tool wrote is never absorbed into your paragraph", () => {
+		const filled: Plan = {
+			...inOrder,
+			written: [
+				{
+					after: 0,
+					md: "It cost users half a second twice a day.",
+					confidence: "low",
+					because: "no cost stated",
+				},
+			],
+		};
+		const groups = paragraphs(build(LINE, filled, 3).runs);
+		expect(groups).toHaveLength(3);
+		expect(groups[1]?.[0]?.kind).toBe("written");
 	});
 });
