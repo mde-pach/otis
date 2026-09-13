@@ -38,9 +38,10 @@ export function About() {
 					<p>
 						It comes back with <strong>two or three arrangements</strong>, not one, and applies the
 						first. The others are already paid for, so the strip above the article lets you move
-						between them for nothing — each is your own sections, opening words first, in the order
-						that arrangement would put them. Choosing a shape is reading your text, not reading a
-						label someone put on it.
+						between them for nothing. Each is drawn as your own sections: one bar apiece, as wide as
+						that section is long, in the order that arrangement puts them. A section keeps its width
+						wherever it lands, so what moved is something you see rather than something you are
+						told. The names are there if you hover.
 					</p>
 					<p>
 						Hover any sentence on either side and its counterpart lights up, with the thread between
@@ -55,9 +56,11 @@ export function About() {
 						out, and the layout is the Markdown in your own text.
 					</p>
 					<p>
-						Hover a shortened sentence and what it did appears <em>over</em> it: your words struck
-						through where they went, its words beside them. It covers rather than displaces — the
-						output is the output, and nothing is ever written into it to explain itself.
+						Hover a shortened sentence and what it did opens <strong>in the gutter</strong>, on that
+						sentence's own thread: your words struck through where they went, its words beside them.
+						It sits between the two texts because it belongs to neither — your notes are your notes
+						and the article is the article, and nothing about what happened between them is written
+						into either. Below 880px the gutter is gone, and the card with it.
 					</p>
 					<p>
 						<strong>copy markdown</strong>, at the top of the article, puts the whole thing on your

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { build, fits, outline, share, stale, toMarkdown } from "../plan";
+import { bars, build, fits, outline, share, stale, toMarkdown } from "../plan";
 import type { Plan } from "../types";
 
 const NOTES = `The cache was doing exactly what we asked it to do.
@@ -224,5 +224,26 @@ describe("the shapes a run comes back with", () => {
 
 	test("a shape that leaves a section out leaves it out of the outline too", () => {
 		expect(outline(NOTES, two.shapes[2] as never)).toHaveLength(2);
+	});
+});
+
+describe("an arrangement drawn as bars", () => {
+	const notes = "aaaa aaaa\n\nbb\n\ncccccc cccccc cccccc";
+
+	test("a section keeps its width wherever the arrangement puts it", () => {
+		const asIs = bars(notes, { name: "", at: [0, 1, 2], because: "" });
+		const moved = bars(notes, { name: "", at: [2, 1, 0], because: "" });
+		expect(moved).toEqual([...asIs].reverse());
+	});
+
+	test("the longest section is the full width, the shortest is still visible", () => {
+		const widths = bars(notes, { name: "", at: [0, 1, 2], because: "" });
+		expect(widths.at(-1)).toBe(1);
+		expect(widths[1]).toBeGreaterThan(0.1);
+		expect(widths[1]).toBeLessThan(widths[0] as number);
+	});
+
+	test("a section it leaves out has no bar", () => {
+		expect(bars(notes, { name: "", at: [0, null, 1], because: "" })).toHaveLength(2);
 	});
 });
