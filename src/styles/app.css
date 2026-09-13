@@ -1,31 +1,33 @@
-:root {
-	--paper: #eef0ef;
-	--sheet: #fcfdfc;
-	--ink: #14181a;
-	--ink-2: #454f4d;
-	--ink-3: #7b8481;
-	--line: #d9dfdd;
-	--line-2: #bdc5c2;
-	--rephrased: #1f4fd8;
-	--tool: #a8461c;
-	--lit: #f6e9c9;
-	--read: Newsreader, Georgia, "Times New Roman", serif;
-	--mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
-}
+/**
+ * One palette: the drafting table, with the chrome floating over it.
+ *
+ * Colour carries exactly one meaning in the text — where a word came from. Cyan
+ * is the tool touching your words, amber is the tool's own. Nothing else in the
+ * app is allowed either hue, so a glance at the article is never ambiguous.
+ */
 
-@media (prefers-color-scheme: dark) {
-	:root:not([data-theme="light"]) {
-		--paper: #0f1213;
-		--sheet: #171b1c;
-		--ink: #e9edec;
-		--ink-2: #c1c9c7;
-		--ink-3: #8c9593;
-		--line: #262c2e;
-		--line-2: #3c4446;
-		--rephrased: #8caaff;
-		--tool: #e28b59;
-		--lit: #3a3320;
-	}
+:root {
+	--bg: #071722;
+	--pane: #0c2030;
+	--pane-2: #0e2536;
+	--cap: #0a1e2c;
+	--ink: #d9ebf4;
+	--ink-2: #95b7ca;
+	--ink-3: #5c8096;
+	--line: #16374c;
+	--line-2: #205272;
+	--cy: #4fc9ec;
+	--am: #f0a04b;
+	--am-loud: #ff9a3c;
+	--grid: rgba(79, 201, 236, 0.05);
+
+	/* one highlight, used identically on both sides */
+	--lit: rgba(79, 201, 236, 0.22);
+	--lit-ink: #eaf6fb;
+
+	--sans: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+	--mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+	--read: Newsreader, Georgia, "Times New Roman", serif;
 }
 
 * {
@@ -34,425 +36,632 @@
 
 body {
 	margin: 0;
-	height: 100dvh;
-	overflow: hidden;
-	background: var(--paper);
+	background: var(--bg);
 	color: var(--ink);
-	font-family: var(--read);
-	font-size: 16px;
-	line-height: 1.75;
+	font-family: var(--sans);
+	font-size: 15px;
+	line-height: 1.7;
 	-webkit-font-smoothing: antialiased;
 }
 
-button,
-input,
-[contenteditable] {
+button {
 	font: inherit;
 	color: inherit;
+	background: none;
+	border: none;
+	padding: 0;
+	cursor: pointer;
 }
 
-.app {
-	height: 100dvh;
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 212px;
-	/* a grid row is auto by default, which means "as tall as the content" —
-	   long notes then push every footer off the bottom of the window */
-	grid-template-rows: minmax(0, 1fr);
-	overflow: hidden;
-}
-
-.app.working {
-	cursor: progress;
-}
-
-.pane {
+.shell {
 	display: flex;
 	flex-direction: column;
-	min-width: 0;
-	/* and a grid item's automatic minimum size is its content, so the pane has
-	   to be told it may be shorter than what is inside it */
-	min-height: 0;
+	height: 100dvh;
 }
 
-.pane + .pane {
-	border-left: 1px solid var(--line);
-}
-
-.panel {
-	background: var(--sheet);
-}
-
-.pane-head,
-.pane-foot {
+/* ---------------------------------------------------------------- top bar */
+.top {
 	flex: none;
+	height: 44px;
 	display: flex;
 	align-items: center;
-	gap: 10px;
-	padding: 10px 22px;
+	gap: 18px;
+	padding: 0 22px;
+	border-bottom: 1px solid var(--line);
 	font-family: var(--mono);
-	font-size: 0.6rem;
-	letter-spacing: 0.14em;
+	font-size: 0.62rem;
+	letter-spacing: 0.16em;
 	text-transform: uppercase;
 	color: var(--ink-3);
 }
 
-.pane-head {
+.top .mark {
+	color: var(--ink-2);
+	letter-spacing: 0.28em;
+}
+
+.top nav {
+	margin-left: auto;
+	display: flex;
+	gap: 16px;
+}
+
+.top nav button[aria-current="true"] {
+	color: var(--cy);
+}
+
+.top nav button:hover {
+	color: var(--ink);
+}
+
+/* ------------------------------------------------------------------ panes */
+.app {
+	flex: 1 1 auto;
+	min-height: 0;
+	display: flex;
+	position: relative;
+}
+
+.pane {
+	flex: 1 1 0;
+	min-width: 0;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	background: var(--pane);
+}
+
+.pane.art {
+	background: var(--pane-2);
+}
+
+.ph {
+	flex: none;
+	padding: 11px 30px;
+	font-family: var(--mono);
+	font-size: 0.56rem;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+	color: var(--ink-3);
 	border-bottom: 1px solid var(--line);
 }
 
-.pane-foot {
-	border-top: 1px solid var(--line);
-	text-transform: none;
-	letter-spacing: 0.04em;
-	min-height: 44px;
-}
-
-.pane-right {
-	margin-left: auto;
-	text-transform: none;
-	letter-spacing: 0.05em;
-}
-
-.pane-foot .act {
-	margin-left: auto;
-}
-
-/* the only part of a pane that scrolls; min-height for the same reason as above */
 .scroll {
 	flex: 1 1 auto;
 	min-height: 0;
 	overflow-y: auto;
 	overscroll-behavior: contain;
-	padding: 28px 22px 60px;
+	padding: 28px 30px 118px;
+	background-image:
+		linear-gradient(var(--grid) 1px, transparent 1px),
+		linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+	background-size: 22px 22px;
 }
 
-.quiet {
-	font-family: var(--mono);
-	font-size: 0.6rem;
-	letter-spacing: 0.04em;
-	line-height: 1.7;
-	color: var(--ink-3);
-	margin: 0;
-	text-transform: none;
-}
-
-/* ------------------------------------------------------------ notes */
+/* your notes are one continuous text: never split into elements */
 .notes {
+	max-width: 56ch;
 	outline: none;
-	max-width: 60ch;
-	color: var(--ink-2);
-}
-
-.notes p {
-	margin: 0 0 16px;
-	border-radius: 2px;
-	transition: background 0.12s;
-	/* a code fence is one paragraph: keep its line breaks */
 	white-space: pre-wrap;
+	min-height: 100%;
 }
 
-.notes p.lit {
+::highlight(otis-lit) {
 	background: var(--lit);
-	color: var(--ink);
-	box-shadow: 0 0 0 4px var(--lit);
+	color: var(--lit-ink);
 }
 
-.notes p.unused {
-	color: var(--ink-3);
+::highlight(otis-out) {
+	color: #47677a;
 }
 
-.notes p[data-note]::after {
-	content: attr(data-note);
-	font-family: var(--mono);
-	font-size: 0.52rem;
-	letter-spacing: 0.1em;
-	text-transform: uppercase;
-	color: var(--ink-3);
-	border: 1px solid var(--line);
-	border-radius: 2px;
-	padding: 1px 4px;
-	margin-left: 8px;
-	vertical-align: 2px;
-	white-space: nowrap;
+/* ---------------------------------------------------------------- article */
+.md {
+	max-width: 56ch;
+	outline: none;
 }
 
-/* ------------------------------------------------------------ article */
-.doc {
-	max-width: 58ch;
-}
-
-.doc p {
+.md p,
+.md ul,
+.md pre {
 	margin: 0 0 16px;
-	outline: none;
-	white-space: pre-wrap;
 }
 
-.doc h2 {
-	font-size: 1.08rem;
+.md h2,
+.md h3 {
+	font-size: 1.12rem;
 	font-weight: 600;
-	margin: 30px 0 10px;
-	outline: none;
+	margin: 24px 0 10px;
 }
 
-.doc h2:first-child {
+.md h3 {
+	font-size: 1rem;
+}
+
+.md :first-child {
 	margin-top: 0;
 }
 
-/* your words carry no mark — only what changed does */
-.doc h2.mark {
-	color: var(--tool);
-	border-bottom: 1px solid var(--tool);
-	display: inline-block;
+.md ul {
+	padding-left: 20px;
 }
 
-.changed {
-	border-bottom: 1px dotted var(--rephrased);
-}
-
-/* ------------------------------------------------------------ peek */
-.peek {
-	position: fixed;
-	/* placed by Peek.tsx once measured; these keep it off-screen until then */
-	left: -9999px;
-	top: -9999px;
-	z-index: 30;
-	max-height: 60dvh;
-	overflow: hidden;
-	width: min(390px, 46vw);
-	background: var(--sheet);
-	border: 1px solid var(--line-2);
-	border-radius: 4px;
-	box-shadow: 0 10px 34px rgba(0, 0, 0, 0.14);
-	padding: 11px 13px;
-	display: flex;
-	flex-direction: column;
-	gap: 7px;
-	pointer-events: none;
-}
-
-.peek-kind {
+.md pre {
 	font-family: var(--mono);
-	font-size: 0.57rem;
-	letter-spacing: 0.08em;
+	font-size: 0.86rem;
+	white-space: pre-wrap;
+	background: rgba(0, 0, 0, 0.22);
+	border-radius: 3px;
+	padding: 10px 12px;
+}
+
+.md code {
+	font-family: var(--mono);
+	font-size: 0.88em;
+	background: rgba(79, 201, 236, 0.1);
+	border-radius: 2px;
+	padding: 0 3px;
+}
+
+.md a {
+	color: inherit;
+}
+
+/* colour alone says where a word came from */
+.md [data-run] {
+	border-radius: 2px;
+	outline: none;
+	transition:
+		background 0.12s,
+		color 0.12s;
+}
+
+.md [data-kind="reworded"] {
+	color: var(--cy);
+}
+
+.md [data-kind="written"] {
+	color: var(--am);
+}
+
+/* shaded by how far it reached past what the notes support */
+.md [data-kind="written"][data-reach="low"] {
+	color: var(--am-loud);
+	border-bottom: 1px dotted rgba(255, 154, 60, 0.7);
+}
+
+.md [data-run].lit {
+	background: var(--lit);
+	color: var(--lit-ink);
+}
+
+.md [data-kind="written"].lit {
+	background: rgba(240, 160, 75, 0.2);
+	color: var(--am);
+}
+
+.md [data-kind="written"][data-reach="low"].lit {
+	color: var(--am-loud);
+}
+
+/* ----------------------------------------------------------------- gutter */
+.gutter {
+	flex: none;
+	width: 70px;
+	background: var(--bg);
+	position: relative;
+}
+
+.gutter svg {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+}
+
+/* ---------------------------------------------------------------- capsule */
+.cap {
+	position: absolute;
+	bottom: 20px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 6;
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	max-width: calc(100% - 40px);
+	background: var(--cap);
+	border: 1px solid var(--line-2);
+	border-radius: 99px;
+	padding: 9px 20px;
+	font-family: var(--mono);
+	font-size: 0.6rem;
+	letter-spacing: 0.05em;
+	color: var(--ink-3);
+	box-shadow: 0 18px 42px -14px rgba(0, 0, 0, 0.75);
+}
+
+.cap.busy {
+	border-color: var(--cy);
+}
+
+.brief {
+	color: var(--ink-2);
+	outline: none;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 44ch;
+	min-width: 14ch;
+	cursor: text;
+	border-bottom: 1px solid transparent;
+}
+
+.brief:empty::before {
+	content: "say what you are making…";
+	color: var(--ink-3);
+}
+
+.brief:hover {
+	color: var(--ink);
+}
+
+.brief:focus {
+	color: var(--ink);
+	border-bottom-color: var(--cy);
+	white-space: normal;
+	overflow: visible;
+	max-width: 52ch;
+}
+
+.sep {
+	width: 1px;
+	height: 14px;
+	background: var(--line-2);
+	flex: none;
+}
+
+.cog {
+	font-family: var(--mono);
+	font-size: inherit;
+	letter-spacing: 0.1em;
 	text-transform: uppercase;
 	color: var(--ink-3);
 }
 
-.peek-kind.rephrased {
-	color: var(--rephrased);
+.cog:hover {
+	color: var(--cy);
 }
 
-.peek-kind.generated {
-	color: var(--tool);
-}
-
-.peek-diff {
-	font-size: 0.95rem;
-	line-height: 1.55;
-	margin: 0;
-}
-
-.peek-diff del {
-	text-decoration: line-through;
-	text-decoration-color: var(--tool);
+.hints button {
+	text-align: left;
+	font-size: 0.9rem;
+	line-height: 1.45;
 	color: var(--ink-3);
+	padding: 4px 0;
 }
 
-.peek-diff ins {
-	text-decoration: none;
-	background: color-mix(in srgb, var(--rephrased) 18%, transparent);
-	border-radius: 2px;
-	padding: 0 2px;
+.hints button:hover {
+	color: var(--cy);
 }
 
-.peek-legend {
+/* ------------------------------------------------------------------- dial */
+.dial {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	flex: none;
+}
+
+.dial .track {
+	display: flex;
+	align-items: center;
+}
+
+.dial .track button {
+	width: 26px;
+	height: 16px;
+	position: relative;
+}
+
+.dial .track button::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 7px;
+	height: 2px;
+	background: var(--line-2);
+}
+
+.dial .track button:first-child::before {
+	left: 50%;
+}
+
+.dial .track button:last-child::before {
+	right: 50%;
+}
+
+.dial .track button::after {
+	content: "";
+	position: absolute;
+	left: 50%;
+	top: 4px;
+	width: 8px;
+	height: 8px;
+	margin-left: -4px;
+	border-radius: 99px;
+	background: var(--line-2);
+	transition:
+		background 0.16s,
+		transform 0.16s;
+}
+
+.dial .track button:hover::after {
+	background: var(--ink-3);
+}
+
+.dial .track button[aria-current="true"]::after {
+	background: var(--cy);
+	transform: scale(1.5);
+}
+
+.dial .name {
+	color: var(--ink-2);
+	min-width: 7ch;
+}
+
+/* ------------------------------------------------------------------ hints */
+.hints {
+	position: absolute;
+	bottom: 76px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 6;
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	background: var(--cap);
+	border: 1px solid var(--line-2);
+	border-radius: 8px;
+	padding: 10px 15px;
+	max-width: min(600px, calc(100% - 40px));
+	box-shadow: 0 18px 42px -14px rgba(0, 0, 0, 0.75);
+}
+
+.hints .lab {
 	font-family: var(--mono);
 	font-size: 0.54rem;
-	letter-spacing: 0.06em;
+	letter-spacing: 0.13em;
+	text-transform: uppercase;
 	color: var(--ink-3);
+	padding-bottom: 3px;
 }
 
-.peek-none {
-	font-size: 0.93rem;
-	color: var(--ink-3);
-	font-style: italic;
-	margin: 0;
+.hints .lab.warn {
+	color: var(--am);
+	padding-top: 6px;
 }
 
-/* ------------------------------------------------------------ panel */
-.panel-body {
-	padding: 18px 14px 40px;
-	display: flex;
-	flex-direction: column;
-	gap: 20px;
-}
-
-.opts {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-}
-
-.opt {
-	text-align: left;
-	font-size: 0.91rem;
-	padding: 7px 10px;
-	border: 1px solid var(--line);
-	border-radius: 3px;
-	background: var(--paper);
-	cursor: pointer;
-	display: flex;
-	flex-direction: column;
-	gap: 1px;
-}
-
-.opt small {
-	font-family: var(--mono);
-	font-size: 0.53rem;
-	letter-spacing: 0.05em;
-	color: var(--ink-3);
-}
-
-.opt[aria-pressed="true"] {
-	border-color: var(--ink);
-	background: var(--sheet);
-}
-
-.opt:disabled {
-	opacity: 0.45;
-	cursor: default;
+.hints.keys {
+	bottom: 76px;
+	width: min(420px, calc(100% - 40px));
 }
 
 .field {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-}
-
-.label {
+	width: 100%;
+	margin-top: 7px;
+	background: var(--bg);
+	border: 1px solid var(--line);
+	border-radius: 3px;
+	color: var(--ink);
 	font-family: var(--mono);
-	font-size: 0.56rem;
-	letter-spacing: 0.12em;
-	text-transform: uppercase;
-	color: var(--ink-3);
+	font-size: 0.68rem;
+	padding: 7px 9px;
 }
 
-.rows {
+.said {
+	position: absolute;
+	bottom: 74px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 5;
+	margin: 0;
+	max-width: min(640px, calc(100% - 40px));
+	font-family: var(--mono);
+	font-size: 0.58rem;
+	letter-spacing: 0.04em;
+	line-height: 1.6;
+	color: var(--ink-3);
+	text-align: center;
+	pointer-events: none;
+}
+
+button:focus-visible,
+.brief:focus-visible,
+.field:focus-visible {
+	outline: 1px solid var(--cy);
+	outline-offset: 3px;
+}
+
+/* ------------------------------------------------------------------ about */
+.doc {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+	padding: 54px 24px 90px;
+	font-family: var(--read);
+	font-size: 17px;
+	line-height: 1.72;
+}
+
+.doc .col {
+	max-width: 63ch;
+	margin: 0 auto;
 	display: flex;
 	flex-direction: column;
-	gap: 5px;
+	gap: 30px;
 }
 
-.row {
-	display: flex;
-	align-items: baseline;
-	gap: 8px;
+.doc h1 {
+	font-size: 2.2rem;
+	font-weight: 500;
+	letter-spacing: -0.02em;
+	line-height: 1.1;
+	margin: 0 0 14px;
+}
+
+.doc h2 {
 	font-family: var(--mono);
 	font-size: 0.6rem;
-	color: var(--ink-3);
-	font-variant-numeric: tabular-nums;
+	font-weight: 500;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	color: var(--cy);
+	margin: 0 0 9px;
 }
 
-.row b {
-	margin-left: auto;
+.doc section {
+	display: flex;
+	flex-direction: column;
+}
+
+.doc p {
+	margin: 0 0 13px;
+	color: var(--ink-2);
+}
+
+.doc p:last-child {
+	margin-bottom: 0;
+}
+
+.doc .lead {
+	font-size: 1.14rem;
+	color: var(--ink);
+}
+
+.doc .after {
+	margin-top: 14px;
+}
+
+.doc strong {
 	color: var(--ink);
 	font-weight: 500;
 }
 
-.row.rephrased span {
-	border-bottom: 1px dotted var(--rephrased);
+.doc em {
+	color: var(--ink);
+	font-style: italic;
 }
 
-.row.tool span {
-	border-bottom: 1px solid var(--tool);
-	color: var(--tool);
-}
-
-.act {
+.doc .foot {
 	font-family: var(--mono);
-	font-size: 0.62rem;
-	letter-spacing: 0.08em;
-	text-transform: uppercase;
-	padding: 7px 12px;
-	border: 1px solid var(--line-2);
-	border-radius: 2px;
-	background: var(--paper);
-	color: var(--ink-2);
-	cursor: pointer;
+	font-size: 0.6rem;
+	letter-spacing: 0.06em;
+	color: var(--ink-3);
+	border-top: 1px solid var(--line);
+	padding-top: 20px;
 }
 
-.act:hover {
-	border-color: var(--ink);
+.key,
+.steps {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	font-family: var(--sans);
+	font-size: 0.94rem;
+}
+
+.key div,
+.steps div {
+	display: flex;
+	gap: 13px;
+	align-items: baseline;
+}
+
+.key span:last-child,
+.steps span {
+	color: var(--ink-3);
+}
+
+.key .sw {
+	flex: none;
+	width: 15ch;
+}
+
+.key .k-yours {
 	color: var(--ink);
 }
 
-.act.lead {
-	background: var(--ink);
-	color: var(--sheet);
-	border-color: var(--ink);
+.key .k-reworded {
+	color: var(--cy);
 }
 
-.act.lead:hover {
-	color: var(--sheet);
-	opacity: 0.9;
+.key .k-written {
+	color: var(--am);
 }
 
-.act:focus-visible,
-.opt:focus-visible,
-.input:focus-visible {
-	outline: 2px solid var(--rephrased);
-	outline-offset: 2px;
+.key .k-low {
+	color: var(--am-loud);
+	border-bottom: 1px dotted rgba(255, 154, 60, 0.7);
 }
 
-.settings summary {
+.key .k-out {
+	color: #47677a;
+}
+
+.steps b {
 	font-family: var(--mono);
-	font-size: 0.56rem;
-	letter-spacing: 0.12em;
+	font-size: 0.6rem;
+	font-weight: 400;
+	letter-spacing: 0.1em;
 	text-transform: uppercase;
-	color: var(--ink-3);
-	cursor: pointer;
+	color: var(--cy);
+	flex: none;
+	width: 9ch;
 }
 
-.settings .input {
-	width: 100%;
-	margin-top: 8px;
-	font-family: var(--mono);
-	font-size: 0.62rem;
-	padding: 5px 7px;
-	border: 1px solid var(--line);
-	border-radius: 2px;
-	background: var(--paper);
-}
-
-@media (max-width: 900px) {
-	body {
-		height: auto;
-		overflow: auto;
-	}
-
+/* ----------------------------------------------------------------- narrow */
+@media (max-width: 880px) {
 	.app {
-		grid-template-columns: 1fr;
-		grid-template-rows: none;
-		height: auto;
-		overflow: visible;
+		flex-direction: column;
 	}
 
-	/* stacked, each pane is its own window: a fixed height, scrolling inside,
-	   so its footer stays reachable without scrolling past the whole document */
+	.gutter {
+		display: none;
+	}
+
 	.pane {
-		height: 82dvh;
+		height: 46dvh;
 	}
 
-	.pane + .pane {
-		border-left: none;
+	.pane.art {
 		border-top: 1px solid var(--line);
 	}
 
-	.panel {
-		height: auto;
+	.cap {
+		flex-wrap: wrap;
+		justify-content: center;
+		border-radius: 16px;
 	}
 
-	.peek {
-		width: 76vw;
+	.brief {
+		white-space: normal;
+		max-width: 100%;
+	}
+
+	.doc {
+		padding: 36px 20px 70px;
+		font-size: 16px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	* {
+		/* biome-ignore lint/complexity/noImportantStyles: honouring the setting has to beat every transition above */
+		animation-duration: 0.01ms !important;
+		/* biome-ignore lint/complexity/noImportantStyles: as above */
+		transition-duration: 0.01ms !important;
 	}
 }
