@@ -115,7 +115,7 @@ describe("gaps", () => {
 	test("a required part with nothing in it is a gap, with the file's own question", () => {
 		const placement = read({ 0: "ground", 1: "claim", 2: "reason" }, kind, 3);
 		expect(gaps(placement, kind, "fr")).toEqual([
-			{ part: "doubt", asks: "que dirait un opposant ?", after: 2 },
+			{ part: "doubt", kind: "missing", asks: "que dirait un opposant ?", after: 2 },
 		]);
 	});
 
@@ -128,6 +128,7 @@ describe("gaps", () => {
 		const placement = read({ 0: "claim", 1: "reason", 2: "doubt" }, kind, 3);
 		expect(gaps(placement, kind, "fr")[0]).toEqual({
 			part: "ground",
+			kind: "missing",
 			asks: "quelle situation ?",
 			after: null,
 		});
@@ -140,5 +141,50 @@ describe("gaps", () => {
 
 	test("an empty document is all of the required parts and none of the optional", () => {
 		expect(gaps([], kind).map((gap) => gap.part)).toEqual(["ground", "claim", "reason", "doubt"]);
+	});
+});
+
+describe("a part that is filled but says nothing", () => {
+	const owing: Pattern = {
+		...kind,
+		parts: [
+			{
+				id: "cost",
+				does: "",
+				required: true,
+				many: false,
+				wants: "specifics",
+				asks: { en: "what did it cost?", fr: "combien ?" },
+				thin: { en: "how much, in numbers?", fr: "combien, en chiffres ?" },
+			},
+			{ id: "cause", does: "", required: true, many: true, asks: { en: "why?", fr: "pourquoi ?" } },
+		],
+	};
+
+	const texts = ["Roughly 9,000 requests a day took over a second.", "The TTL was too short."];
+	const hollow = ["A number of users were affected and some complained.", "The TTL was too short."];
+
+	test("a part carrying a figure is not a gap", () => {
+		expect(gaps(["cost", "cause"], owing, "en", texts)).toEqual([]);
+	});
+
+	test("the same part carrying nothing is asked a different question", () => {
+		expect(gaps(["cost", "cause"], owing, "en", hollow)).toEqual([
+			{ part: "cost", kind: "thin", asks: "how much, in numbers?", after: 0 },
+		]);
+	});
+
+	test("and it is a different kind of gap from a part nobody filled", () => {
+		const [said] = gaps([null, "cause"], owing, "en", hollow);
+		expect(said?.kind).toBe("missing");
+		expect(said?.asks).toBe("what did it cost?");
+	});
+
+	test("a part that does not declare wants is never checked for it", () => {
+		expect(gaps(["cost", "cause"], owing, "en", ["9 requests", "vague"])).toEqual([]);
+	});
+
+	test("without the writer's text there is nothing to check, and it stays quiet", () => {
+		expect(gaps(["cost", "cause"], owing, "en")).toEqual([]);
 	});
 });

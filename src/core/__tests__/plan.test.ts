@@ -63,7 +63,7 @@ describe("reach", () => {
 
 	test("at three the parts nothing was placed in come back as questions", () => {
 		const { gaps } = at(3, organised(["cause", "observed", null]));
-		expect(gaps).toEqual([{ part: "cost", asks: "cost?", after: 1 }]);
+		expect(gaps).toEqual([{ part: "cost", kind: "missing", asks: "cost?", after: 1 }]);
 	});
 
 	test("the question is the file's, in the language asked for", () => {

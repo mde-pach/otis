@@ -53,9 +53,14 @@ export const howItWorks: Pattern = {
 			does: "a case where the mechanism visibly matters",
 			required: true,
 			many: true,
+			wants: "specifics",
 			asks: {
 				en: "show one case where it visibly matters",
 				fr: "montre un cas où ça se voit vraiment",
+			},
+			thin: {
+				en: "which case, with what numbers? an example nobody can picture is a claim",
+				fr: "quel cas, avec quels chiffres ? un exemple qu'on ne peut pas voir est une affirmation",
 			},
 		},
 		{

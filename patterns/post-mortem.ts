@@ -33,9 +33,14 @@ export const postMortem: Pattern = {
 			does: "what was seen, and when — the first symptom, with its time",
 			required: true,
 			many: false,
+			wants: "specifics",
 			asks: {
 				en: "what was seen first, and at what time?",
 				fr: "qu'est-ce qu'on a vu en premier, et à quelle heure ?",
+			},
+			thin: {
+				en: "when did it start, and what did the numbers actually do?",
+				fr: "ça a commencé quand, et les chiffres ont fait quoi au juste ?",
 			},
 		},
 		{
@@ -43,9 +48,14 @@ export const postMortem: Pattern = {
 			does: "what it cost the people on the other end",
 			required: true,
 			many: false,
+			wants: "specifics",
 			asks: {
 				en: "what did it cost the people on the other end?",
 				fr: "qu'est-ce que ça a coûté aux gens en face ?",
+			},
+			thin: {
+				en: "how many, for how long? a cost without a figure reads as an anecdote",
+				fr: "combien, et pendant combien de temps ? un coût sans chiffre passe pour une anecdote",
 			},
 		},
 		{

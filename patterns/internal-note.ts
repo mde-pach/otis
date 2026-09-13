@@ -28,7 +28,12 @@ export const internalNote: Pattern = {
 			does: "whether it is live, and since when",
 			required: true,
 			many: false,
+			wants: "specifics",
 			asks: { en: "is it live, and since when?", fr: "est-ce en prod, et depuis quand ?" },
+			thin: {
+				en: 'since when, exactly? "soon" is not a date anyone can plan around',
+				fr: "depuis quand, exactement ? « prochainement » n'est pas une date",
+			},
 		},
 		{
 			id: "action",
