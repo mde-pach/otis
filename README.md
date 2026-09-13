@@ -38,13 +38,26 @@ your notes never covered. Each of those is a different colour on the page:
 Nothing is captioned. Colour is the only thing that says where a word came
 from, and no other part of the interface is allowed either hue.
 
-## You have your word before anything is true
+## Shapes
 
-**Run** does not change your article. It comes back with a proposal, and the
-proposal is listed in your own text: what it wants to move, what it would
-shorten and to what, what it would leave out, what it says the piece is missing
-and why. Each of those is refused on its own — turning down the order keeps the
-shortenings and the drafts, in your order. `settle` applies what is left.
+A run comes back with **two or three arrangements**, not one, and applies the
+first. "Which shape should this take" is the writer's question, and a model
+guessing at it once is worse than offering the ones it can actually make. They
+all arrived in the same request, so the strip above the article moves between
+them for nothing.
+
+Each is drawn as `outline()` gives it: the opening words of each section, in
+that arrangement's order. Choosing is reading your own text rather than a label
+for it. Nothing asks you to approve a reword or a move — the run applies, and
+the dial and the strip are how you read it afterwards.
+
+## What it did, over the thing it did it to
+
+Hover a shortened section and the word diff appears in a layer above it, inside
+the article pane but outside the article. It covers rather than displaces:
+`check:layout` asserts nothing of the kind is ever inside `.md`.
+
+`copy markdown` in the article's header puts `toMarkdown()` on the clipboard.
 
 The brief suggestions are built from what you pasted: the kind is scored against
 the notes themselves, the subject is your own first line, and the sentence is in
@@ -82,13 +95,18 @@ Never an article. It is given the writer's segments, what they said they are
 making, and a short reference note, and it answers in **indices**:
 
 ```ts
+interface Shape {
+  name: string;                           // three or four words for the arrangement
+  at: (number | null)[];                  // where each of your segments goes in it, or null
+  because: string;
+}
+
 interface Plan {
   basis: string;                          // the notes it was made for
-  at: (number | null)[];                  // where each of your segments goes, or null
+  shapes: Shape[];                        // the arrangements on offer
   format: Record<number, string>;         // same words, markdown added
   short: Record<number, string>;          // fewer words, same claims
   written: { after: number; md: string; confidence: "high" | "low" }[];
-  because: string;
 }
 ```
 
@@ -136,7 +154,7 @@ src/
   core/          pure TypeScript — no DOM, no fetch, no storage
     types.ts         Segment, Run, Plan, Reach, Doc
     segments.ts      your own sections, located without cutting the text up
-    plan.ts          a plan plus a reach becomes runs; also read/settle, for the proposal
+    plan.ts          a plan, a reach and a shape become runs; the only place an article is made
     markdown.ts      just enough: bold, italic, code, headings, list items
     reword.ts        the faithfulness gate, and what counts as formatting
     diff.ts          word diff, sequence and bag retention
@@ -145,7 +163,7 @@ src/
     llm/             Claude from the browser, and the planner
     patterns/        the bundled reference notes
     store/           IndexedDB
-  ui/            Solid: Notes, Threads, Article, Review, Capsule, About
+  ui/            Solid: Notes, Threads, Article, Shapes, Capsule, About
   pages/         Astro shell
 patterns/        the reference notes themselves
 fixtures/        a fixed pile of notes to run changes against

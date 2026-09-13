@@ -138,7 +138,7 @@ for (const size of SIZES) {
 		`bottom ${capsule.bottom} of ${capsule.vh}`,
 	);
 
-	const geometry = await page.evaluate((isStacked) => {
+	const geometry = await page.evaluate(() => {
 		const vh = window.innerHeight;
 		return {
 			vh,
@@ -147,13 +147,14 @@ for (const size of SIZES) {
 				const box = pane.getBoundingClientRect();
 				const scroll = pane.querySelector(".scroll");
 				return {
-					name: pane.querySelector(".ph")?.textContent,
+					name:
+						pane.querySelector(".ph span")?.textContent ?? pane.querySelector(".ph")?.textContent,
 					height: Math.round(box.height),
 					scrolls: scroll ? scroll.scrollHeight > scroll.clientHeight : null,
 				};
 			}),
 		};
-	}, stacked);
+	});
 
 	for (const pane of geometry.panes) {
 		check(
@@ -170,8 +171,13 @@ for (const size of SIZES) {
 		runs: document.querySelectorAll("[data-run]").length,
 		threads: document.querySelectorAll(".gutter path").length,
 		notesNodes: document.querySelector(".notes").childNodes.length,
+		copy: Boolean(document.querySelector(".copy")),
+		// the article is the article: nothing about it is ever written into it
+		inOutput: document.querySelectorAll(".md .pop, .md .was, .md .shapes").length,
 	}));
 	check("every section reaches the article", article.runs > 20, `${article.runs} runs`);
+	check("the markdown can be taken away", article.copy === true);
+	check("nothing explains itself inside the output", article.inOutput === 0);
 	check(
 		"the notes stay one text node, never split into elements",
 		article.notesNodes <= 1,
