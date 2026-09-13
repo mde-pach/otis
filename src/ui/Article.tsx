@@ -1,148 +1,65 @@
-import { createMemo, For, Show } from "solid-js";
-import { diffWords } from "../core/diff";
-import { displayId } from "../core/project";
-import { deriveState } from "../core/provenance";
-import type { Fragment } from "../core/types";
-import type { PeekData } from "./Peek";
-import { articleMarkdown, editBlock, editTitle, sections, state } from "./state";
-
-const KIND = {
-	verbatim: "yours",
-	edited: "edited",
-	"reword-accepted": "rephrased",
-	"written-here": "yours",
-} as const;
+import { For } from "solid-js";
+import { blockOf, inline, stripMarker } from "../core";
+import { editRun, runs } from "./state";
 
 /**
- * The article, as text.
+ * The article: Markdown, rendered.
  *
- * Your words carry no mark, because they are the norm. Only what changed is
- * marked — the altered words inside a rephrasing, and any heading the tool
- * wrote. Everything is editable, and editing makes it yours.
+ * Colour alone says where a word came from — nothing is captioned, and there is
+ * no menu. A run the writer edits stops being the tool's on the spot, because
+ * by then the words are theirs.
  */
-export function Article(props: {
-	onPeek: (data: PeekData | null) => void;
-	onLight: (refs: string[]) => void;
-}) {
-	const fragments = createMemo(() => new Map(state.project.fragments.map((f) => [f.id, f])));
-
-	/** Hover and blur are wired on the node: a linter does not recognise either on text. */
-	const wireLeave = (node: HTMLDivElement) => {
-		node.addEventListener("mouseleave", () => {
-			props.onPeek(null);
-			props.onLight([]);
-		});
-	};
-
-	const wireHover = (node: HTMLElement, data: () => Omit<PeekData, "x" | "y">) => {
-		node.addEventListener("mouseenter", (event) => {
-			const d = data();
-			props.onPeek({ ...d, x: event.clientX + 16, y: event.clientY + 14 });
-			props.onLight(d.refs.map((r) => r.replace("#", "f")));
-		});
-	};
-
-	const copy = async () => {
-		try {
-			await navigator.clipboard.writeText(articleMarkdown());
-		} catch {
-			// a browser that refuses the clipboard is not worth interrupting for
-		}
-	};
+export function Article(props: { lit: number | null; onHover: (id: number | null) => void }) {
+	const marks = (run: { kind: string; confidence?: string }) => ({
+		"data-kind": run.kind,
+		...(run.confidence ? { "data-reach": run.confidence } : {}),
+	});
 
 	return (
-		<section class="pane">
-			<div class="pane-head">
-				<span>Article</span>
-				<span class="pane-right quiet">editable — change anything</span>
-			</div>
-
-			<div class="scroll" ref={wireLeave}>
-				<article class="doc">
-					<For each={sections()}>
-						{(section) => (
-							<Show when={section.blocks.length > 0}>
-								<Show when={section.title}>
-									{(title) => (
-										<h2
-											contentEditable
-											spellcheck={false}
-											classList={{ mark: title().source === "tool" }}
-											ref={(node) => {
-												wireHover(node, () => ({
-													kind: title().source === "tool" ? "generated" : "edited",
-													before: "",
-													after: title().text,
-													refs: [],
-												}));
-												node.addEventListener("blur", () => {
-													void editTitle(section.slotId, node.textContent ?? "");
-												});
-											}}
-										>
-											{title().text}
-										</h2>
-									)}
-								</Show>
-
-								<For each={section.blocks}>
-									{(block) => {
-										const fragment = () =>
-											fragments().get(block.fragmentId) as Fragment | undefined;
-										const before = () => fragment()?.text ?? "";
-										const kind = () => {
-											const f = fragment();
-											return f ? KIND[deriveState(block, f)] : "yours";
-										};
-										return (
-											<p
-												contentEditable
-												spellcheck={false}
-												ref={(node) => {
-													wireHover(node, () => ({
-														kind: kind(),
-														before: kind() === "yours" ? "" : before(),
-														after: block.text,
-														refs: [displayId(block.fragmentId)],
-													}));
-													node.addEventListener("blur", () => {
-														void editBlock(block.id, node.textContent ?? "");
-													});
-												}}
-											>
-												<Show when={kind() === "rephrased"} fallback={block.text}>
-													<For each={diffWords(before(), block.text)}>
-														{(op) =>
-															op.type === "del" ? null : op.type === "ins" ? (
-																<span class="changed">{op.text}</span>
-															) : (
-																op.text
-															)
-														}
-													</For>
-												</Show>
-											</p>
-										);
-									}}
-								</For>
-							</Show>
-						)}
+		<section class="pane art">
+			<div class="ph">the article</div>
+			<div class="scroll" id="article-scroll">
+				{/* biome-ignore lint/a11y/useSemanticElements: a contenteditable surface is the interactive element; a textarea cannot render provenance or carry highlight ranges */}
+				{/* biome-ignore lint/a11y/useFocusableInteractive: contenteditable is focusable by definition */}
+				<div
+					class="md"
+					role="textbox"
+					aria-multiline="true"
+					tabindex={0}
+					aria-label="the article"
+					contentEditable
+					spellcheck={false}
+					onMouseLeave={() => props.onHover(null)}
+					onInput={(event) => {
+						const target = (event.target as HTMLElement).closest<HTMLElement>("[data-run]");
+						if (target) void editRun(Number(target.dataset.run), target.textContent ?? "");
+					}}
+				>
+					<For each={runs()}>
+						{(run) => {
+							const body = () => inline(stripMarker(run.md));
+							const attrs = () => ({
+								"data-run": String(run.id),
+								...marks(run),
+								classList: { lit: props.lit === run.id },
+								onMouseEnter: () => props.onHover(run.id),
+								innerHTML: body(),
+							});
+							const block = blockOf(run.md);
+							if (block === "h2") return <h2 {...attrs()} />;
+							if (block === "h3") return <h3 {...attrs()} />;
+							if (block === "li") {
+								return (
+									<ul>
+										<li {...attrs()} />
+									</ul>
+								);
+							}
+							if (block === "code") return <pre {...attrs()} />;
+							return <p {...attrs()} />;
+						}}
 					</For>
-
-					<Show when={state.project.blocks.length === 0}>
-						<p class="quiet">
-							Nothing here yet. Write on the left and press Organise — every word that lands here
-							will be one of yours.
-						</p>
-					</Show>
-				</article>
-			</div>
-
-			<div class="pane-foot">
-				<span class="quiet">{state.message()}</span>
-				<button type="button" class="act" onClick={() => void copy()}>
-					Copy
-				</button>
+				</div>
 			</div>
 		</section>
 	);
