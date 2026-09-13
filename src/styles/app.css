@@ -106,6 +106,8 @@ button {
 	flex: 1 1 0;
 	min-width: 0;
 	min-height: 0;
+	/* nothing inside a pane may ever grow the page: it scrolls in here or not at all */
+	overflow: hidden;
 	display: flex;
 	flex-direction: column;
 	background: var(--pane);
@@ -269,27 +271,34 @@ button {
 
 /* ------------------------------------------------------------------ shapes */
 .shapes {
-	flex: none;
+	/* it gives way to the article rather than pushing it off the window */
+	flex: 0 1 auto;
+	min-height: 0;
 	display: flex;
+	align-items: stretch;
 	gap: 8px;
 	padding: 10px 30px;
 	border-bottom: 1px solid var(--line);
-	overflow-x: auto;
-	overscroll-behavior-x: contain;
+	overflow: auto;
+	overscroll-behavior: contain;
 }
 
 /*
- * Each arrangement drawn as your own sections: one bar apiece, as wide as that
- * section is long, in the order it would put them. A section keeps its width
- * wherever it lands, so what moved is visible rather than described.
+ * One arrangement, whole: what it leads with, why, and the piece it would make.
+ * Nothing here is behind a hover — choosing the shape of your article is a
+ * thing you should be able to read.
  */
 .shape {
 	flex: 1 1 0;
-	min-width: 74px;
+	min-width: 180px;
+	max-height: min(196px, 26vh);
+	overflow-y: auto;
+	overscroll-behavior: contain;
 	display: flex;
-	align-items: flex-start;
-	gap: 8px;
-	padding: 8px 10px;
+	flex-direction: column;
+	gap: 3px;
+	text-align: left;
+	padding: 9px 11px 10px;
 	border: 1px solid var(--line);
 	border-radius: 3px;
 	background: rgba(0, 0, 0, 0.12);
@@ -307,37 +316,84 @@ button {
 	background: rgba(79, 201, 236, 0.06);
 }
 
-.shape .n {
-	flex: none;
+.shape .nm {
 	font-family: var(--mono);
-	font-size: 0.54rem;
-	line-height: 1.1;
+	font-size: 0.56rem;
+	letter-spacing: 0.13em;
+	text-transform: uppercase;
 	color: var(--ink-3);
 }
 
-.shape[aria-current="true"] .n {
+.shape[aria-current="true"] .nm {
 	color: var(--cy);
 }
 
-.shape .map {
-	flex: 1 1 auto;
-	min-width: 0;
+/* its own reason, in its own words */
+.shape .why {
+	font-size: 0.76rem;
+	line-height: 1.45;
+	color: var(--ink-3);
+	padding-bottom: 5px;
+	border-bottom: 1px solid var(--line);
+	margin-bottom: 4px;
+}
+
+.shape[aria-current="true"] .why {
+	color: var(--ink-2);
+}
+
+.shape .skel,
+.shape .cut {
 	display: flex;
 	flex-direction: column;
-	gap: 3px;
-	padding-top: 2px;
+	gap: 2px;
 }
 
-.shape .map i {
-	display: block;
-	height: 2px;
-	border-radius: 2px;
-	background: #2d5c78;
-	transition: background 0.12s;
+/* your sections, in that order; the number is where each one sits in your notes */
+.shape .ln {
+	display: flex;
+	gap: 7px;
+	font-size: 0.74rem;
+	line-height: 1.4;
+	color: var(--ink-3);
 }
 
-.shape[aria-current="true"] .map i {
-	background: rgba(79, 201, 236, 0.75);
+.shape[aria-current="true"] .ln {
+	color: var(--ink-2);
+}
+
+.shape .ln b {
+	flex: none;
+	width: 2ch;
+	text-align: right;
+	font-family: var(--mono);
+	font-size: 0.58rem;
+	font-weight: 400;
+	color: var(--line-2);
+}
+
+.shape[aria-current="true"] .ln b {
+	color: var(--cy);
+}
+
+.shape .cut {
+	margin-top: 7px;
+	padding-top: 6px;
+	border-top: 1px solid var(--line);
+}
+
+.shape .cut .lab {
+	font-family: var(--mono);
+	font-size: 0.5rem;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	color: var(--am);
+	padding-bottom: 2px;
+}
+
+.shape .cut .ln,
+.shape .cut .ln b {
+	color: #47677a;
 }
 
 /* the two have to be told apart at a glance, and never read as one word */
