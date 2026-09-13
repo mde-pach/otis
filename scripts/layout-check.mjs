@@ -173,7 +173,7 @@ for (const size of SIZES) {
 		notesNodes: document.querySelector(".notes").childNodes.length,
 		copy: Boolean(document.querySelector(".copy")),
 		// the article is the article: nothing about it is ever written into it
-		inOutput: document.querySelectorAll(".md .pop, .md .was, .md .shapes").length,
+		inOutput: document.querySelectorAll(".md .pop, .md .was, .md .card, .md .shapes").length,
 	}));
 	check("every section reaches the article", article.runs > 20, `${article.runs} runs`);
 	check("the markdown can be taken away", article.copy === true);

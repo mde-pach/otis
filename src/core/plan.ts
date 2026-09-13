@@ -167,3 +167,21 @@ export function outline(notes: string, shape: Shape, words = 5): string[] {
 			return said.length > words ? `${said.slice(0, words).join(" ")}…` : said.join(" ");
 		});
 }
+
+/**
+ * The same arrangement as a picture: one bar per section, in the order it puts
+ * them, as wide as that section is long.
+ *
+ * A section keeps its width wherever it lands, so reading two of these side by
+ * side is seeing what moved rather than being told. Widths are relative to the
+ * longest section, 0 to 1.
+ */
+export function bars(notes: string, shape: Shape): number[] {
+	const segments = segment(notes);
+	const longest = Math.max(1, ...segments.map((s) => s.text.length));
+	return segments
+		.map((s) => ({ s, at: shape.at[s.index] }))
+		.filter((p) => p.at !== null && p.at !== undefined)
+		.sort((a, b) => (a.at as number) - (b.at as number))
+		.map(({ s }) => Math.max(0.12, s.text.length / longest));
+}
