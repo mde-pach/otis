@@ -33,8 +33,9 @@ export function stale(notes: string, plan: Plan | null): boolean {
 
 /** The arrangement the article is in, or nothing if the plan has none. */
 export function shapeOf(plan: Plan | null, which: number): Shape | null {
-	if (!plan || plan.shapes.length === 0) return null;
-	return plan.shapes[Math.min(Math.max(which, 0), plan.shapes.length - 1)] ?? null;
+	const shapes = plan?.shapes;
+	if (!Array.isArray(shapes) || shapes.length === 0) return null;
+	return shapes[Math.min(Math.max(which, 0), shapes.length - 1)] ?? null;
 }
 
 /**
@@ -103,12 +104,13 @@ export function build(notes: string, plan: Plan | null, reach: Reach, which = 0)
 
 	if (reach === 3) {
 		// anchored to a segment so an insertion survives the writer editing around it
-		[...plan.written].reverse().forEach((written, back) => {
+		const missing = Array.isArray(plan.written) ? plan.written : [];
+		[...missing].reverse().forEach((written, back) => {
 			const anchor = placed.findIndex((p) => p.segment.index === written.after);
 			const where = anchor < 0 ? runs.length : anchor + 1;
 			runs.splice(where, 0, {
 				id: 0,
-				key: `w${plan.written.length - 1 - back}`,
+				key: `w${missing.length - 1 - back}`,
 				kind: "written",
 				md: written.md,
 				confidence: written.confidence,

@@ -12,6 +12,7 @@ import {
 	outline,
 	type Reach,
 	type Run,
+	reviveDoc,
 	type Shape,
 	segment,
 	shapeOf,
@@ -79,9 +80,10 @@ async function keep() {
 }
 
 export async function init() {
-	const saved = await store.load(ID);
-	if (saved?.notes) setDoc({ ...saved, edits: saved.edits ?? {}, shape: saved.shape ?? 0 });
-	else setDoc({ ...emptyDoc(ID), notes: "", brief: "" });
+	// never trusted: it was written by whatever version of this the writer last
+	// had open, and a plan it cannot read is not worth their text
+	const saved = reviveDoc(ID, await store.load(ID));
+	setDoc(saved.notes ? saved : { ...emptyDoc(ID), notes: "", brief: "" });
 }
 
 export async function setNotes(notes: string) {
