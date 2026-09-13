@@ -1,5 +1,6 @@
-import { createEffect, onCleanup, onMount } from "solid-js";
-import { dropped, runs } from "./state";
+import { createEffect, createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import { diffWords, type Run } from "../core";
+import { dropped, runs, sourceOf } from "./state";
 
 /**
  * The gutter, and the curves in it.
@@ -8,9 +9,18 @@ import { dropped, runs } from "./state";
  * of the source range to the measured position of the rendered run — so it
  * stays true when either side is edited, scrolled or resized. A dashed stub
  * with a ring is a piece of your notes the article is not using.
+ *
+ * When a shortened run is lit, the card that says what was done to it opens
+ * here, on its own thread, between the two texts. It belongs to neither: your
+ * notes are your notes and the article is the article, and nothing about what
+ * happened between them is ever written into either one.
  */
 export function Threads(props: { lit: number | null }) {
 	let svg: SVGSVGElement | undefined;
+	const [card, setCard] = createSignal<number | null>(null);
+
+	/** the lit run, when it is one there is something to say about */
+	const changed = () => runs().find((r) => r.id === props.lit && r.kind === "reworded") ?? null;
 
 	const rangeRect = (start: number, end: number): DOMRect | null => {
 		const host = document.querySelector(".notes");
@@ -30,6 +40,7 @@ export function Threads(props: { lit: number | null }) {
 		if (!svg || !gutter?.width) return;
 		const width = gutter.width;
 		const parts: string[] = [];
+		let open: number | null = null;
 
 		for (const run of runs()) {
 			if (!run.from) continue;
@@ -41,6 +52,7 @@ export function Threads(props: { lit: number | null }) {
 			const y2 = b.top + b.height / 2 - gutter.top;
 			const on = props.lit === run.id;
 			const dim = props.lit !== null && !on;
+			if (on && run.kind === "reworded") open = (y1 + y2) / 2;
 			parts.push(
 				`<path d="M0 ${y1.toFixed(1)} C ${width * 0.45} ${y1.toFixed(1)}, ${width * 0.55} ${y2.toFixed(1)}, ${width} ${y2.toFixed(1)}" fill="none" stroke="${on ? "#4fc9ec" : "#2b6e90"}" stroke-width="${on ? 2 : 1}" opacity="${on ? 1 : dim ? 0.14 : 0.5}"/>`,
 			);
@@ -56,6 +68,7 @@ export function Threads(props: { lit: number | null }) {
 		}
 
 		svg.innerHTML = parts.join("");
+		setCard(open);
 	};
 
 	const schedule = () => requestAnimationFrame(draw);
@@ -84,6 +97,18 @@ export function Threads(props: { lit: number | null }) {
 	return (
 		<div class="gutter">
 			<svg ref={svg} aria-hidden="true" />
+			<Show when={card() !== null && changed()}>
+				{(run) => (
+					<div class="card" style={{ top: `${card() as number}px` }}>
+						<span class="k">shortened from what you wrote</span>
+						<p>
+							<For each={diffWords(sourceOf(run() as Run), (run() as Run).md)}>
+								{(op) => <span data-op={op.type}>{op.text}</span>}
+							</For>
+						</p>
+					</div>
+				)}
+			</Show>
 		</div>
 	);
 }

@@ -1,54 +1,21 @@
-import { createEffect, createSignal, For, type JSX, onCleanup, onMount, Show } from "solid-js";
-import { blockOf, diffWords, inline, type Run, stripMarker } from "../core";
-import { editRun, markdown, runs, sourceOf } from "./state";
+import { createSignal, For, type JSX } from "solid-js";
+import { blockOf, inline, type Run, stripMarker } from "../core";
+import { editRun, markdown, runs } from "./state";
 
 /**
  * The article: Markdown, rendered.
  *
  * One section in, one section out, in the order the chosen shape gave them.
  * Colour alone says where a word came from, and the output is output — nothing
- * is ever inserted into it to explain itself.
- *
- * What a shortening did is shown over the section it did it to, on hover, in a
- * layer above the text. It covers rather than displaces: the article you are
- * reading is the article, whatever you happen to be pointing at.
+ * is ever inserted into it to explain itself, and nothing is drawn over it
+ * either. What a shortening did opens in the gutter, on that run's own thread.
  */
 export function Article(props: {
 	lit: number | null;
 	onHover: (id: number | null) => void;
 	shapes?: JSX.Element;
 }) {
-	let scroll: HTMLDivElement | undefined;
-	const [at, setAt] = createSignal<{ top: number; left: number; width: number } | null>(null);
 	const [copied, setCopied] = createSignal(false);
-
-	/** the lit run, when there is something about it worth showing */
-	const changed = () => runs().find((r) => r.id === props.lit && r.kind === "reworded") ?? null;
-
-	const place = () => {
-		const run = changed();
-		const node = run ? scroll?.querySelector<HTMLElement>(`[data-run="${run.id}"]`) : null;
-		if (!run || !node || !scroll) return setAt(null);
-		const a = node.getBoundingClientRect();
-		const b = scroll.getBoundingClientRect();
-		setAt({ top: a.top - b.top + scroll.scrollTop, left: a.left - b.left, width: a.width });
-	};
-
-	createEffect(() => {
-		void props.lit;
-		void runs();
-		requestAnimationFrame(place);
-	});
-
-	onMount(() => {
-		const again = () => requestAnimationFrame(place);
-		scroll?.addEventListener("scroll", again, { passive: true });
-		addEventListener("resize", again);
-		onCleanup(() => {
-			scroll?.removeEventListener("scroll", again);
-			removeEventListener("resize", again);
-		});
-	});
 
 	const copy = async () => {
 		await navigator.clipboard?.writeText(markdown());
@@ -91,7 +58,7 @@ export function Article(props: {
 
 			{props.shapes}
 
-			<div class="scroll" id="article-scroll" ref={scroll}>
+			<div class="scroll" id="article-scroll">
 				{/* biome-ignore lint/a11y/useSemanticElements: a contenteditable surface is the interactive element; a textarea cannot render provenance or carry highlight ranges */}
 				{/* biome-ignore lint/a11y/useFocusableInteractive: contenteditable is focusable by definition */}
 				<div
@@ -110,24 +77,6 @@ export function Article(props: {
 				>
 					<For each={runs()}>{(run) => body(run)}</For>
 				</div>
-
-				<Show when={at() && changed()}>
-					<div
-						class="pop"
-						style={{
-							top: `${(at() as { top: number }).top}px`,
-							left: `${(at() as { left: number }).left}px`,
-							"min-width": `${Math.max((at() as { width: number }).width, 220)}px`,
-						}}
-					>
-						<span class="k">shortened from what you wrote</span>
-						<p>
-							<For each={diffWords(sourceOf(changed() as Run), (changed() as Run).md)}>
-								{(op) => <span data-op={op.type}>{op.text}</span>}
-							</For>
-						</p>
-					</div>
-				</Show>
 			</div>
 		</section>
 	);
