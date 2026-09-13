@@ -1,22 +1,21 @@
 /**
  * Text in, text out.
  *
- * There are no fragments, blocks, slots or sections here. Your notes are one
+ * There are no fragments, blocks, slots or paragraphs here. Your notes are one
  * string; the article is one Markdown string; provenance is a set of ranges
- * over the two. A one-sentence note stays one run, and a heading in the
- * output is a run of text like any other — it carries no special status.
+ * over the two. A one-line note stays one run, and a heading in the output is
+ * a run of text like any other — it carries no special status.
  */
 
 /**
- * One movable piece of the writer's notes, located by offset. Never a copy.
+ * One section of the writer's notes, located by offset. Never a copy.
  *
- * A piece is a sentence, or a line the writer already made into a unit — a
- * bullet, a heading, a fenced block. `block` is the paragraph it came from, so
- * sentences that stay together can be set back down as one paragraph.
+ * A section is whatever they separated: a block between blank lines, a bullet,
+ * a heading, a fenced block — or, in a document typed as one line, a sentence.
+ * Nothing above this knows about paragraphs; layout is Markdown, in the text.
  */
 export interface Segment {
 	index: number;
-	block: number;
 	text: string;
 	start: number;
 	end: number;
@@ -41,8 +40,6 @@ export interface Run {
 	from?: { start: number; end: number };
 	/** the segment it came from, so both panes can name the same thing */
 	fromIndex?: number;
-	/** the paragraph of the notes it came from; absent on anything the tool wrote */
-	block?: number;
 	confidence?: Confidence;
 }
 
@@ -65,7 +62,7 @@ export interface Plan {
 	/** fewer words, same claims. Passes the faithfulness gate or it is dropped. */
 	short: Record<number, string>;
 	/** the model's own text, anchored after one of your segments */
-	written: { after: number; md: string; confidence: Confidence; because: string }[];
+	written: Written[];
 	/** one sentence, in plain words, on what it did */
 	because: string;
 }
@@ -79,6 +76,23 @@ export const REACH = [
 
 export type Reach = 0 | 1 | 2 | 3;
 
+/** A gap the notes do not cover, drafted into place and always marked. */
+export interface Written {
+	after: number;
+	md: string;
+	confidence: Confidence;
+	/** what was missing, said to the writer */
+	because: string;
+}
+
+/**
+ * What the writer has turned down in a proposal, before any of it is applied.
+ * Keyed the way the review lists them: `m` for the order, `s<index>` for a
+ * shortening, `d<index>` for a section it wants to leave out, `w<n>` for
+ * something it wants to write.
+ */
+export type Refused = Record<string, true>;
+
 export interface Doc {
 	id: string;
 	notes: string;
@@ -86,6 +100,11 @@ export interface Doc {
 	reach: Reach;
 	patternId: string;
 	plan: Plan | null;
+	/**
+	 * A proposal that has not been applied. Nothing in it touches the article
+	 * until the writer says so — this is the step where they have their word.
+	 */
+	review: Plan | null;
 	/** runs the writer has rewritten by hand, keyed by the stable run key */
 	edits: Record<string, string>;
 	updatedAt: number;
@@ -99,6 +118,7 @@ export function emptyDoc(id: string): Doc {
 		reach: 0,
 		patternId: "essay",
 		plan: null,
+		review: null,
 		edits: {},
 		updatedAt: Date.now(),
 	};
