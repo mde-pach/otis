@@ -7,6 +7,14 @@ string. Provenance is a set of ranges over the two. There are no fragments,
 blocks, slots or sections in the model — paste a single line and you get a
 single line back, with the parts that moved highlighted inside it.
 
+**The unit is a sentence.** Notes usually arrive as one long line, so paragraphs
+would leave nothing to move and nothing to light up. Otis splits on sentences,
+and on the lines you already made units of — a bullet, a heading, a fenced block
+— never inside a decimal, a version, a method call, a code span or an
+abbreviation. Sentences that came from the same paragraph and are still next to
+each other are set back down as that paragraph, so ordinary prose reads as prose
+and a sentence that moved is the thing you can see.
+
 ## The rule
 
 Your text is the source of truth. Otis moves your sentences into an order that
@@ -102,7 +110,7 @@ check. When one gives bad results you change a file.
 src/
   core/          pure TypeScript — no DOM, no fetch, no storage
     types.ts         Segment, Run, Plan, Reach, Doc
-    segments.ts      locating your text without cutting it up (fences stay whole)
+    segments.ts      sentences and the lines you drew, located without cutting the text up
     plan.ts          a plan plus a reach becomes runs; the only place an article is made
     markdown.ts      just enough: bold, italic, code, headings, list items
     reword.ts        the faithfulness gate, and what counts as formatting

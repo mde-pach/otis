@@ -40,6 +40,12 @@ export function About() {
 						them. A sentence with no thread came from nowhere in your notes: it is something Otis
 						wrote.
 					</p>
+					<p>
+						The piece it moves is a sentence, not a paragraph — notes usually arrive as one long
+						line, and a paragraph would leave nothing to move. Sentences that were together in your
+						notes and are still together come back as one paragraph, so what you read is prose and
+						what you notice is the sentence that went somewhere else.
+					</p>
 				</section>
 
 				<section>
