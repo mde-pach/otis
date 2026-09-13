@@ -21,10 +21,10 @@ import { dropped, holes, runs, sourceOf } from "./state";
  * never written for you.
  *
  * And down the left edge, the spine: each part of the chosen kind, at the first
- * section serving it. The tool is only right about three times in four when it
- * says a part is missing, because a neighbouring section slides into the hole;
- * it is never wrong about what is filling a part. So it shows you that, and you
- * can see for yourself that your cost paragraph is standing in for the opening.
+ * section serving it. The tool is not always right when it says a part is
+ * missing, because a neighbouring section slides into the hole; it is never
+ * wrong about what is filling a part. So it shows you that, and you can see for
+ * yourself that your cost paragraph is standing in for the opening.
  */
 export function Threads(props: { lit: number | null }) {
 	let svg: SVGSVGElement | undefined;

@@ -43,9 +43,10 @@ export interface Run {
 	 * The part of the chosen kind this section is serving, once there is one.
 	 *
 	 * Shown in the gutter rather than in the article. The tool cannot reliably
-	 * tell that a part is missing — measured at about three quarters — but it
-	 * always knows what is filling it, and a writer who can see their cost
-	 * paragraph sitting in the `observed` slot needs no help from a model.
+	 * tell that a part is missing, because a neighbouring section slides into
+	 * the hole — but it always knows what is filling one, and a writer who can
+	 * see their cost paragraph sitting in the `observed` slot needs no help
+	 * from a model.
 	 */
 	part?: string;
 }
