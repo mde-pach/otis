@@ -26,8 +26,14 @@ export function About() {
 					<h2>How to use it</h2>
 					<p>
 						Write or paste on the left. The article appears on the right straight away, in your own
-						order, untouched. Then say what you are making in the line at the bottom — in your own
-						words, not from a menu — and it rewrites to suit.
+						order, untouched. Say what you are making in the line at the bottom — in your own words,
+						not from a menu — and press <strong>run</strong>.
+					</p>
+					<p>
+						Nothing reaches the model on its own. Typing, moving the dial and rewriting the brief
+						are all free; only <strong>run</strong> spends a request, and one request answers all
+						four reach settings, so you can read your text four ways without asking again. When you
+						have edited since the last run, the button says <em>run again</em>.
 					</p>
 					<p>
 						Hover any sentence on either side and its counterpart lights up, with the thread between
@@ -108,8 +114,9 @@ export function About() {
 					<p>
 						It will not invent a number, a unit or an identifier your notes do not contain — a
 						shortening that introduces one is discarded before you ever see it. It will not silently
-						replace your sentence with its own. And it will not hide what it did: the only way a
-						word of its writing reaches your article is in amber.
+						replace your sentence with its own, and it will not call out to a model unless you press
+						run. And it will not hide what it did: the only way a word of its writing reaches your
+						article is in amber.
 					</p>
 				</section>
 
