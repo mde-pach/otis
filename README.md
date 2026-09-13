@@ -46,12 +46,13 @@ guessing at it once is worse than offering the ones it can actually make. They
 all arrived in the same request, so the strip above the article moves between
 them for nothing.
 
-Each is drawn as `bars()` gives it: one bar per section, as wide as that section
-is long, in that arrangement's order. A section keeps its width wherever it
-lands, so two maps side by side show what moved rather than describing it;
-`outline()` is the same thing in words, on the tooltip. Nothing asks you to
-approve a reword or a move — the run applies, and the dial and the strip are how
-you read it afterwards.
+Each is laid out by `skeleton()`: what it leads with, why it is in that order,
+and the piece it would make — every section by its opening words, carrying the
+place it holds in the notes so a move is visible as well as readable, and the
+ones it would leave out named rather than silently missing. A picture of an
+order was tried and thrown out: the length of a section is not something anyone
+is choosing between. Nothing asks you to approve a reword or a move — the run
+applies, and the dial and the strip are how you read it afterwards.
 
 ## What it did, in the gutter
 
@@ -79,6 +80,11 @@ document it would be a map with no entry for most of what you just pasted, so
 `build` sets it aside entirely and shows your text in your order rather than
 silently dropping the parts it cannot place. Edit a word and the plan still
 fits but is marked behind: the button reads *run again*.
+
+What comes out of storage is revived rather than trusted — it was written by
+whatever version the writer last had open. A plan from before arrangements
+existed is carried forward into one; anything unreadable is dropped and the
+notes stay, because losing the writer's text is the one thing this cannot do.
 
 ## Reach
 
@@ -155,7 +161,7 @@ check. When one gives bad results you change a file.
 ```
 src/
   core/          pure TypeScript — no DOM, no fetch, no storage
-    types.ts         Segment, Run, Plan, Reach, Doc
+    types.ts         Segment, Run, Shape, Plan, Reach, Doc, and reviveDoc
     segments.ts      your own sections, located without cutting the text up
     plan.ts          a plan, a reach and a shape become runs; the only place an article is made
     markdown.ts      just enough: bold, italic, code, headings, list items
@@ -189,9 +195,10 @@ fine in a screenshot of the top of the page — which is how a button once shipp
 unreachable. It asserts what a screenshot cannot: no pane taller than the
 window, overflow scrolling inside the pane, the capsule reachable, a pasted
 document keeping every line break, every section arriving in the article, the
-notes still one text node, and hovering lighting exactly one run and one thread.
-Set `OTIS_CHROMIUM` to skip `playwright install`
-if you already have a chromium.
+notes still one text node, hovering lighting exactly one run and one thread, and
+— with arrangements on offer — every one of them saying what it is, why, and the
+piece it would make, without the strip pushing a pane off the window. Set
+`OTIS_CHROMIUM` to skip `playwright install` if you already have a chromium.
 
 Your key and your notes stay in the browser: the key in `localStorage`, the
 document in IndexedDB. Nothing is sent anywhere but the model endpoint you

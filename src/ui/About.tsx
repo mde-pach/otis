@@ -38,10 +38,11 @@ export function About() {
 					<p>
 						It comes back with <strong>two or three arrangements</strong>, not one, and applies the
 						first. The others are already paid for, so the strip above the article lets you move
-						between them for nothing. Each is drawn as your own sections: one bar apiece, as wide as
-						that section is long, in the order that arrangement puts them. A section keeps its width
-						wherever it lands, so what moved is something you see rather than something you are
-						told. The names are there if you hover.
+						between them for nothing. Each one is laid out in full: what it leads with, why it is
+						in that order, and the piece it would make — every section by its opening words,
+						numbered by where it sits in your notes, with anything it would leave out named rather
+						than silently missing. Nothing is behind a hover. You are choosing the shape of your
+						article, so you get to read all three before you say which.
 					</p>
 					<p>
 						Hover any sentence on either side and its counterpart lights up, with the thread between
