@@ -1,97 +1,86 @@
 import { describe, expect, test } from "bun:test";
-import { placeFragment } from "../draft";
-import { importDocument } from "../project";
-import { deriveState } from "../provenance";
-import {
-	acceptReword,
-	checkFaithfulness,
-	pendingRewords,
-	proposeReword,
-	rejectReword,
-} from "../reword";
-import { emptyProject } from "../types";
+import { checkFaithfulness, formattingOnly, plain } from "../reword";
 
-const seed = () => {
-	const { project } = importDocument(
-		emptyProject("p", "t"),
-		"p99 went from 180ms to 410ms in the week after rollout.",
-	);
-	return placeFragment(project, "f01", "symptom");
-};
+const ORIGINAL =
+	"p99 went from 180ms to 410ms in the week after we shipped the read-through cache.";
 
-describe("checkFaithfulness", () => {
-	test("passes a genuine reword", () => {
+describe("the gate", () => {
+	test("a shortening that keeps your words and adds no facts passes", () => {
 		const check = checkFaithfulness(
-			"p99 went from 180ms to 410ms in the week after rollout.",
-			"In the week after rollout, p99 went from 180ms to 410ms.",
+			ORIGINAL,
+			"p99 went 180ms to 410ms the week we shipped the read-through cache.",
 		);
 		expect(check.passed).toBe(true);
+		expect(check.addedFacts).toHaveLength(0);
 	});
 
-	test("blocks a reword that invents a number", () => {
+	test("an invented measurement is caught, with the unit intact", () => {
 		const check = checkFaithfulness(
-			"p99 went from 180ms to 410ms in the week after rollout.",
-			"p99 went from 180ms to 410ms in the week after rollout, a 128% regression.",
+			ORIGINAL,
+			"p99 went from 180ms to 900ms in the week after we shipped it.",
+		);
+		expect(check.passed).toBe(false);
+		expect(check.addedFacts).toContain("900ms");
+		expect(check.reason).toContain("900ms");
+	});
+
+	test("an invented percentage is caught", () => {
+		const check = checkFaithfulness(
+			"Latency roughly doubled after the rollout.",
+			"Latency rose 128% after the rollout.",
 		);
 		expect(check.passed).toBe(false);
 		expect(check.addedFacts).toContain("128%");
 	});
 
-	test("blocks a rewrite dressed as a reword", () => {
-		const check = checkFaithfulness(
-			"p99 went from 180ms to 410ms in the week after rollout.",
-			"Latency regressed sharply once the change shipped everywhere.",
-		);
+	test("a rewrite that keeps almost nothing is not a shortening", () => {
+		const check = checkFaithfulness(ORIGINAL, "Things got slower.");
 		expect(check.passed).toBe(false);
 		expect(check.reason).toContain("rewriting");
 	});
 
-	test("blocks a no-op", () => {
-		const text = "p99 went from 180ms to 410ms in the week after rollout.";
-		expect(checkFaithfulness(text, text).passed).toBe(false);
+	test("a faithful reordering is not punished for moving words", () => {
+		const check = checkFaithfulness(
+			ORIGINAL,
+			"In the week after we shipped the read-through cache, p99 went from 180ms to 410ms.",
+		);
+		expect(check.retention).toBeGreaterThan(0.9);
+	});
+
+	test("returning the sentence unchanged is not a shortening", () => {
+		expect(checkFaithfulness(ORIGINAL, ORIGINAL).passed).toBe(false);
 	});
 });
 
-describe("proposeReword", () => {
-	test("a failing suggestion never becomes a pending reword", () => {
-		const { project, rejected } = proposeReword(
-			seed(),
-			"b01",
-			"p99 doubled, costing us 12 customers.",
-		);
-		expect(rejected?.passed).toBe(false);
-		expect(project.rewords).toHaveLength(0);
+describe("formatting is not rewriting", () => {
+	test("markdown around the same words reads as formatting", () => {
+		expect(
+			formattingOnly(
+				ORIGINAL,
+				`**p99 went from 180ms to 410ms** in the week after we shipped the read-through cache.`,
+			),
+		).toBe(true);
 	});
 
-	test("a passing suggestion waits, and does not touch the draft", () => {
-		const { project } = proposeReword(
-			seed(),
-			"b01",
-			"In the week after rollout, p99 went from 180ms to 410ms.",
-		);
-		expect(pendingRewords(project)).toHaveLength(1);
-		expect(project.blocks[0]?.text).toBe(seed().blocks[0]?.text as string);
+	test("a heading marker is formatting too", () => {
+		expect(formattingOnly("Where it went wrong", "## Where it went wrong")).toBe(true);
 	});
 
-	test("accepting applies it and marks the block", () => {
-		const { project } = proposeReword(
-			seed(),
-			"b01",
-			"In the week after rollout, p99 went from 180ms to 410ms.",
-		);
-		const accepted = acceptReword(project, "r01");
-		expect(accepted.blocks[0]?.text).toContain("In the week after rollout");
-		expect(deriveState(accepted.blocks[0]!, accepted.fragments[0]!)).toBe("reword-accepted");
+	test("one changed word is not formatting", () => {
+		expect(
+			formattingOnly(
+				ORIGINAL,
+				`**p99 rose from 180ms to 410ms** in the week after we shipped the read-through cache.`,
+			),
+		).toBe(false);
 	});
 
-	test("rejecting leaves the draft untouched", () => {
-		const { project } = proposeReword(
-			seed(),
-			"b01",
-			"In the week after rollout, p99 went from 180ms to 410ms.",
-		);
-		const rejected = rejectReword(project, "r01");
-		expect(rejected.blocks[0]?.text).toBe(seed().blocks[0]?.text as string);
-		expect(pendingRewords(rejected)).toHaveLength(0);
+	test("the gate compares plain text, so formatting alone never trips it", () => {
+		const check = checkFaithfulness(ORIGINAL, `**${ORIGINAL}**`);
+		expect(check.addedFacts).toHaveLength(0);
+	});
+
+	test("plain strips the marks and leaves the words", () => {
+		expect(plain("## A `heading` with **bold**")).toBe("A heading with bold");
 	});
 });
