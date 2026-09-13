@@ -7,6 +7,7 @@
  * tool's. There is no path here that quietly writes.
  */
 
+import { blockOf } from "./markdown";
 import { checkFaithfulness, formattingOnly } from "./reword";
 import { segment } from "./segments";
 import type { Plan, Reach, Run, Segment } from "./types";
@@ -46,6 +47,7 @@ export function build(notes: string, plan: Plan | null, reach: Reach): Built {
 				md: s.text,
 				from: { start: s.start, end: s.end },
 				fromIndex: s.index,
+				block: s.block,
 			})),
 			dropped: [],
 		};
@@ -71,6 +73,7 @@ export function build(notes: string, plan: Plan | null, reach: Reach): Built {
 				...shape(s),
 				from: { start: s.start, end: s.end },
 				fromIndex: s.index,
+				block: s.block,
 			})),
 			dropped: [],
 		};
@@ -91,6 +94,7 @@ export function build(notes: string, plan: Plan | null, reach: Reach): Built {
 		...shape(s),
 		from: { start: s.start, end: s.end },
 		fromIndex: s.index,
+		block: s.block,
 	}));
 
 	if (reach === 3) {
@@ -111,9 +115,41 @@ export function build(notes: string, plan: Plan | null, reach: Reach): Built {
 	return { runs: runs.map((run, id) => ({ ...run, id })), dropped };
 }
 
+/**
+ * Putting the paragraph back.
+ *
+ * Segments are sentences, so laying every run out on its own line would turn a
+ * paragraph the writer wrote into a column of one-liners. Runs that came from
+ * the same paragraph and are still next to each other are still that paragraph.
+ * The moment the plan moves one away from its neighbours, it stands alone —
+ * which is exactly the change the writer wants to be able to see.
+ *
+ * Only prose joins: a heading, a bullet and a fenced block are their own thing,
+ * and so is anything the tool wrote.
+ */
+export function paragraphs(runs: Run[]): Run[][] {
+	const out: Run[][] = [];
+	for (const run of runs) {
+		const last = out.at(-1);
+		const head = last?.[0];
+		const together =
+			last !== undefined &&
+			head !== undefined &&
+			run.block !== undefined &&
+			head.block === run.block &&
+			blockOf(head.md) === "p" &&
+			blockOf(run.md) === "p";
+		if (together && last) last.push(run);
+		else out.push([run]);
+	}
+	return out;
+}
+
 /** The article, as the writer would paste it anywhere else. */
 export function toMarkdown(runs: Run[]): string {
-	return runs.map((r) => r.md).join("\n\n");
+	return paragraphs(runs)
+		.map((group) => group.map((r) => r.md).join(" "))
+		.join("\n\n");
 }
 
 export interface Share {

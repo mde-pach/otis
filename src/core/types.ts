@@ -3,13 +3,20 @@
  *
  * There are no fragments, blocks, slots or sections here. Your notes are one
  * string; the article is one Markdown string; provenance is a set of ranges
- * over the two. A one-line note stays a one-line note, and a heading in the
+ * over the two. A one-sentence note stays one run, and a heading in the
  * output is a run of text like any other — it carries no special status.
  */
 
-/** One unit of the writer's notes, located by offset. Never a copy of the text. */
+/**
+ * One movable piece of the writer's notes, located by offset. Never a copy.
+ *
+ * A piece is a sentence, or a line the writer already made into a unit — a
+ * bullet, a heading, a fenced block. `block` is the paragraph it came from, so
+ * sentences that stay together can be set back down as one paragraph.
+ */
 export interface Segment {
 	index: number;
+	block: number;
 	text: string;
 	start: number;
 	end: number;
@@ -34,6 +41,8 @@ export interface Run {
 	from?: { start: number; end: number };
 	/** the segment it came from, so both panes can name the same thing */
 	fromIndex?: number;
+	/** the paragraph of the notes it came from; absent on anything the tool wrote */
+	block?: number;
 	confidence?: Confidence;
 }
 
