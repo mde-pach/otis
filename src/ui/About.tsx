@@ -67,9 +67,9 @@ export function About() {
 					<p>
 						Down the gutter runs the <strong>spine</strong>: the part of the chosen kind that each
 						of your sections is serving, marked where that part begins. It is worth reading. Otis is
-						right about three times in four when it says a part is missing — a neighbouring section
-						tends to slide into the hole — but it is never wrong about what is filling a part, so
-						the spine is how you catch a paragraph standing in for one it is not.
+						not always right when it says a part is missing — a neighbouring section tends to slide
+						into the hole — but it is never wrong about what is filling a part, so the spine is how
+						you catch a paragraph standing in for one it is not.
 					</p>
 					<p>
 						<strong>copy markdown</strong>, at the top of the article, puts the whole thing on your

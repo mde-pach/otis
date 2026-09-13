@@ -102,10 +102,10 @@ picked. Choosing another card organises it, once, and keeps what comes back.
 
 Down the gutter runs the spine: the part each of your sections is serving,
 marked where that part begins. It is there because of a measurement — the tool
-is right about three quarters of the time when it says a part is *missing*,
-because a neighbouring section slides into the hole, but it is never wrong about
-what is *filling* one. So it shows you that, and you catch a cost paragraph
-standing in for the opening yourself.
+is not always right when it says a part is *missing*, because a neighbouring
+section slides into the hole, but it is never wrong about what is *filling* one.
+So it shows you that, and you catch a cost paragraph standing in for the opening
+yourself.
 
 Hover a shortened section and the word diff opens on that section's own thread,
 between the two texts. It belongs to neither: `check:layout` asserts nothing of
@@ -144,9 +144,10 @@ A shortening may **only delete**. Every word in it has to be a word your sentenc
 already contains, so a clause that reads well and was never yours cannot survive,
 and neither can a number or unit your notes do not have.
 
-That rule exists because the evaluation found the old one leaking: a gate that
-only checked for invented *facts* let `"If you enqueue jobs, drop the priority
-argument."` become `"If you enqueue jobs, drop the and it cost us the quarter"`.
+The rule is that strict because a gate that only checks for invented *facts*
+lets `"If you enqueue jobs, drop the priority argument."` become `"If you
+enqueue jobs, drop the and it cost us the quarter"` — every word accounted for,
+no number introduced, and a sentence you never wrote.
 
 **Formatting is not rewriting.** Comparison happens on plain text, so Otis may
 bold a figure, make a list or add a heading and the words stay marked as yours.
@@ -241,8 +242,8 @@ the commands on it.
 - **The rest of the shelf.** Four kinds is thin, and it is the likeliest reason
   the picker returns two cards rather than three: it is told to give three and
   told not to pad, and with four kinds the second instruction wins.
-- **`wants` beyond four parts.** Thirty of the forty-two hollow twins sit in
-  parts that declare nothing and are not looked at.
+- **`wants` beyond four parts.** Most of the corpus's hollow twins sit in parts
+  that declare nothing and are never looked at.
 - **Numbers guard** — every figure in the output checked against the notes, and
   an unmatched one flagged rather than styled.
 - **The file as the source of truth** — File System Access API, one `.otis.md`
