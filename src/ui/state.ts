@@ -4,7 +4,17 @@ import { createLlmPlanner } from "../adapters/llm/llm-planner";
 import { loadKey, loadModel, saveKey, saveModel } from "../adapters/llm/settings";
 import { PATTERNS, patternById, patternFor } from "../adapters/patterns";
 import { createIndexedDbStore } from "../adapters/store/indexeddb-store";
-import { build, type Doc, emptyDoc, type Reach, segment, share, toMarkdown } from "../core";
+import {
+	build,
+	type Doc,
+	emptyDoc,
+	fits,
+	type Reach,
+	segment,
+	share,
+	stale,
+	toMarkdown,
+} from "../core";
 
 const ID = "current";
 const store = createIndexedDbStore();
@@ -25,13 +35,18 @@ export const segments = () => segment(doc.notes);
 export const runs = () => {
 	const built = view().runs;
 	return built.map((run) =>
-		doc.edits[run.id] ? { ...run, md: doc.edits[run.id] as string } : run,
+		doc.edits[run.key] ? { ...run, md: doc.edits[run.key] as string } : run,
 	);
 };
 export const dropped = () => view().dropped;
 export const shares = () => share(runs());
 export const markdown = () => toMarkdown(runs());
 export const pattern = () => patternById(doc.patternId);
+
+/** The plan was made for other text and has been set aside. */
+export const dropped_plan = () => Boolean(doc.plan) && !fits(doc.notes, doc.plan);
+/** The plan still fits, but the words under it have moved on. */
+export const isStale = () => stale(doc.notes, doc.plan);
 
 async function keep() {
 	setDoc("updatedAt", Date.now());
@@ -50,56 +65,57 @@ export async function setNotes(notes: string) {
 }
 
 /** Editing a run detaches it: your words now, wherever they came from. */
-export async function editRun(id: number, md: string) {
-	setDoc("edits", id, md);
+export async function editRun(key: string, md: string) {
+	setDoc("edits", key, md);
 	await keep();
 }
 
+/** Free: the dial filters the plan already in hand, it does not ask for another. */
 export async function setReach(reach: Reach) {
-	setDoc({ reach, edits: {} });
+	setDoc("reach", reach);
 	await keep();
-	if (reach > 0 && !doc.plan) await replan(doc.brief);
 }
 
+/** Also free. Nothing reaches the model until the writer asks for it. */
 export async function setBrief(brief: string) {
-	setDoc("brief", brief);
-	await replan(brief);
+	setDoc({ brief, patternId: patternFor(brief).id });
+	await keep();
 }
 
 /**
- * One request, one plan. Without a key the article is the writer's own text in
- * their own order, which is a true answer rather than an error state.
+ * The only thing in the app that spends a request, and it only ever happens
+ * because the writer pressed it. One plan comes back whole; the dial reads it
+ * four ways afterwards without asking again.
  */
-export async function replan(brief: string) {
-	const text = doc.notes.trim();
-	if (!text) return;
-
-	const chosen = patternFor(brief);
-	setDoc("patternId", chosen.id);
-
+export async function run() {
+	if (busy()) return;
+	const notes = doc.notes;
+	if (!notes.trim()) {
+		setMessage("nothing to work from yet");
+		return;
+	}
 	if (!hasKey()) {
-		setDoc({ plan: null, edits: {} });
-		setMessage("no key yet — this is your text, in your order");
-		await keep();
+		setMessage("add a key first — until then this is your text, in your order");
 		return;
 	}
-	if (doc.reach === 0) {
-		await keep();
-		return;
-	}
+
+	const chosen = patternFor(doc.brief);
+	setDoc("patternId", chosen.id);
 
 	try {
 		setBusy(true);
 		setMessage("");
 		const planner = createLlmPlanner({ apiKey: apiKey(), model: model() });
 		const plan = await planner.plan({
-			segments: segment(doc.notes),
-			brief,
+			notes,
+			segments: segment(notes),
+			brief: doc.brief,
 			pattern: chosen.text,
-			reach: doc.reach,
 		});
+		// edits were filed against the previous plan's runs; they do not survive it
 		setDoc({ plan, edits: {} });
 		setMessage(plan.because);
+		if (doc.reach === 0) setDoc("reach", 2);
 		await keep();
 	} catch (error) {
 		const raw = (error as Error).message ?? String(error);
@@ -111,6 +127,13 @@ export async function replan(brief: string) {
 	} finally {
 		setBusy(false);
 	}
+}
+
+/** Starting over is the writer's, not something that happens to them. */
+export async function clearPlan() {
+	setDoc({ plan: null, edits: {}, reach: 0 });
+	setMessage("");
+	await keep();
 }
 
 export function setApiKey(value: string) {

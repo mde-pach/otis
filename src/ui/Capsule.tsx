@@ -1,6 +1,17 @@
 import { createSignal, For, Show } from "solid-js";
 import { REACH, type Reach } from "../core";
-import { hasKey, setApiKey, setBrief, setModel, setReach, state } from "./state";
+import {
+	clearPlan,
+	dropped_plan,
+	hasKey,
+	isStale,
+	run,
+	setApiKey,
+	setBrief,
+	setModel,
+	setReach,
+	state,
+} from "./state";
 
 const SUGGESTIONS = [
 	"A post-mortem for engineers who weren't there. Lead with the numbers and don't end on the fix.",
@@ -9,10 +20,12 @@ const SUGGESTIONS = [
 ];
 
 /**
- * The only chrome there is: what you are making, and how far it may go.
+ * The only chrome there is: what you are making, how far it may go, and the one
+ * control that spends a request.
  *
- * Nothing here is a button or a chip. The brief is edited where it sits; Enter
- * applies it, Escape puts it back.
+ * Nothing reaches the model on its own. Typing, moving the dial and rewriting
+ * the brief are all free; only `run` asks, and it says so when what you are
+ * looking at was made for text you have since changed.
  */
 export function Capsule() {
 	const [open, setOpen] = createSignal(false);
@@ -23,6 +36,14 @@ export function Capsule() {
 		const said = (field?.textContent ?? "").trim();
 		field?.blur();
 		if (said !== state.doc.brief) void setBrief(said);
+	};
+
+	/** What the one button is for, right now. */
+	const label = () => {
+		if (state.busy()) return "reading…";
+		if (dropped_plan()) return "run";
+		if (isStale()) return "run again";
+		return state.doc.plan ? "run again" : "run";
 	};
 
 	return (
@@ -119,12 +140,34 @@ export function Capsule() {
 				</span>
 
 				<span class="sep" />
+
+				<button
+					type="button"
+					class="go"
+					classList={{ waiting: isStale() || dropped_plan(), busy: state.busy() }}
+					onClick={() => void run()}
+				>
+					{label()}
+				</button>
+
+				<Show when={state.doc.plan}>
+					<button type="button" class="cog" onClick={() => void clearPlan()}>
+						reset
+					</button>
+				</Show>
+
 				<button type="button" class="cog" onClick={() => setSettings(!settings())}>
 					key
 				</button>
 			</div>
 
-			<Show when={state.message()}>
+			<Show when={dropped_plan()}>
+				<p class="said warn">
+					this is your text, in your order — the last plan was made for a different document
+				</p>
+			</Show>
+
+			<Show when={state.message() && !dropped_plan()}>
 				<p class="said">{state.message()}</p>
 			</Show>
 		</>
