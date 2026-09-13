@@ -12,7 +12,7 @@
  */
 
 import type { Planner, PlanRequest } from "../../core/ports";
-import { checkFaithfulness, formattingOnly } from "../../core/reword";
+import { checkFaithfulness, formattingOnly, restates } from "../../core/reword";
 import type { Confidence, Plan, Segment } from "../../core/types";
 import { askJson, type LlmConfig } from "./claude-client";
 
@@ -20,19 +20,21 @@ const SYSTEM = `You arrange a writer's own sentences into an article. You are no
 
 You are given their text as numbered segments, what they said they are making, and a short reference note about that kind of writing.
 
-A segment is one sentence, or one line they already made a unit of — a bullet, a heading, a fenced block. The [P n] marker is the paragraph it was typed in. Segments from the same paragraph that end up next to each other are set back down as one paragraph, so leaving a paragraph's sentences in their order costs nothing and moving one out of it is a visible change. Move a sentence only when the piece is better for it.
+A segment is one section of their document, exactly as they separated it. Each one is laid out on its own in the article, so ordering them is the whole of the structure. There is no paragraph to think about.
 
 Return, as JSON:
 - "at": one entry per segment, in order — the position it should take in the article, or null to leave it out. Positions are integers you choose; only their order matters.
 - "format": {segmentIndex: markdown} for segments that would read better with formatting. THE WORDS MUST BE IDENTICAL. You may add **bold**, *italic*, \`code\`, a list marker or a heading marker. Changing, adding or removing a single word here is a mistake.
 - "short": {segmentIndex: text} for segments that run long. Fewer words, same claims. Every number, unit, name and identifier must survive exactly. If you cannot shorten one without losing something, leave it out of this object.
 - "written": the parts the piece needs that the notes do not contain. Each is {"after": segmentIndex, "md": "...", "confidence": "high" | "low", "because": "..."}. Use "low" when you inferred beyond what the notes support. "because" says, to the writer, what was missing.
+  This is for what is MISSING. If a segment already makes the point, do not write it again in your own words — that makes the piece say the same thing twice. A summary, a recap, a restatement or a tidier version of something already in the notes is not a gap; a transition, a definition, a consequence, a counter-argument or a conclusion the notes never reach may be.
 - "because": one sentence, plain words, on what you did and why.
 
 Rules you must not break:
 - Never put the writer's words in "written" and never put your words in "format" or "short".
 - Do not impose sections. A heading is only ever a "written" run, and only when the piece genuinely needs one — most do not.
 - Leaving the order alone is a legitimate plan. So is writing nothing.
+- Write in the language the notes are written in.
 
 Reply with JSON only.`;
 
@@ -81,7 +83,11 @@ function clean(value: unknown, segments: Segment[], basis: string): Plan {
 			const because = String((item as { because?: unknown })?.because ?? "").trim();
 			return { after, md, confidence, because };
 		})
-		.filter((item) => item.md.length > 0 && segments[item.after] !== undefined);
+		// a paraphrase of the writer's own section is not a gap, whatever it claims
+		.filter(
+			(item) =>
+				item.md.length > 0 && segments[item.after] !== undefined && !restates(item.md, basis),
+		);
 
 	return { basis, at, format, short, written, because: String(raw.because ?? "").trim() };
 }
@@ -94,9 +100,7 @@ export function createLlmPlanner(config: LlmConfig): Planner {
 				return { basis: notes, at: [], format: {}, short: {}, written: [], because: "" };
 			}
 
-			const listing = segments
-				.map((s) => `${s.index} [P${s.block + 1}]: ${s.text.replace(/\s+/g, " ")}`)
-				.join("\n");
+			const listing = segments.map((s) => `${s.index}: ${s.text.replace(/\s+/g, " ")}`).join("\n");
 
 			// Always the whole plan, whatever the dial says. The writer's reach
 			// filters it at render time, so moving the dial costs nothing and they
