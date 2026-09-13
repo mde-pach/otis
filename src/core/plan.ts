@@ -18,15 +18,30 @@ export interface Built {
 }
 
 /**
+ * A plan made for other text is not a plan for this one. Indices are all it
+ * has, so applied to a different document it would quietly drop every segment
+ * it has no entry for — which reads as the tool ignoring what you just pasted.
+ */
+export function fits(notes: string, plan: Plan | null): boolean {
+	return Boolean(plan) && segment((plan as Plan).basis).length === segment(notes).length;
+}
+
+/** The plan still fits, but the words under it have moved on. */
+export function stale(notes: string, plan: Plan | null): boolean {
+	return Boolean(plan) && (plan as Plan).basis !== notes;
+}
+
+/**
  * Reach is the writer's, not the model's: the same plan renders four ways, and
  * the lower settings simply refuse to use parts of it.
  */
 export function build(notes: string, plan: Plan | null, reach: Reach): Built {
 	const segments = segment(notes);
-	if (!plan || reach === 0) {
+	if (!plan || reach === 0 || !fits(notes, plan)) {
 		return {
 			runs: segments.map((s, id) => ({
 				id,
+				key: `s${s.index}`,
 				kind: "kept" as const,
 				md: s.text,
 				from: { start: s.start, end: s.end },
@@ -52,6 +67,7 @@ export function build(notes: string, plan: Plan | null, reach: Reach): Built {
 		return {
 			runs: segments.map((s, id) => ({
 				id,
+				key: `s${s.index}`,
 				...shape(s),
 				from: { start: s.start, end: s.end },
 				fromIndex: s.index,
@@ -71,6 +87,7 @@ export function build(notes: string, plan: Plan | null, reach: Reach): Built {
 
 	const runs: Run[] = placed.map(({ segment: s }) => ({
 		id: 0,
+		key: `s${s.index}`,
 		...shape(s),
 		from: { start: s.start, end: s.end },
 		fromIndex: s.index,
@@ -78,16 +95,17 @@ export function build(notes: string, plan: Plan | null, reach: Reach): Built {
 
 	if (reach === 3) {
 		// anchored to a segment so an insertion survives the writer editing around it
-		for (const written of [...plan.written].reverse()) {
+		[...plan.written].reverse().forEach((written, back) => {
 			const anchor = placed.findIndex((p) => p.segment.index === written.after);
 			const where = anchor < 0 ? runs.length : anchor + 1;
 			runs.splice(where, 0, {
 				id: 0,
+				key: `w${plan.written.length - 1 - back}`,
 				kind: "written",
 				md: written.md,
 				confidence: written.confidence,
 			});
-		}
+		});
 	}
 
 	return { runs: runs.map((run, id) => ({ ...run, id })), dropped };

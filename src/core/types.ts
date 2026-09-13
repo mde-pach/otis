@@ -23,6 +23,11 @@ export type Confidence = "high" | "low";
 /** A stretch of the article, and where it came from. */
 export interface Run {
 	id: number;
+	/**
+	 * Stable across reach settings and re-renders, unlike `id`, which is just a
+	 * position. An edit is filed under this so it survives moving the dial.
+	 */
+	key: string;
 	kind: RunKind;
 	md: string;
 	/** absent exactly when nothing of the writer's sits under this run */
@@ -38,6 +43,12 @@ export interface Run {
  * text it may contribute arrives in `written`, and that is marked.
  */
 export interface Plan {
+	/**
+	 * The notes this plan was made for. A plan is a map over segment indices, so
+	 * applying it to a different document silently drops whatever it has no
+	 * entry for — build() checks this rather than trusting the indices.
+	 */
+	basis: string;
 	/** where each segment goes in the article, or null for left out */
 	at: (number | null)[];
 	/** same words, Markdown added. Formatting is not rewriting. */
@@ -66,8 +77,8 @@ export interface Doc {
 	reach: Reach;
 	patternId: string;
 	plan: Plan | null;
-	/** runs the writer has rewritten by hand, keyed by run id */
-	edits: Record<number, string>;
+	/** runs the writer has rewritten by hand, keyed by the stable run key */
+	edits: Record<string, string>;
 	updatedAt: number;
 }
 

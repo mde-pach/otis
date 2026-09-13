@@ -32,7 +32,7 @@ export function Article(props: { lit: number | null; onHover: (id: number | null
 					onMouseLeave={() => props.onHover(null)}
 					onInput={(event) => {
 						const target = (event.target as HTMLElement).closest<HTMLElement>("[data-run]");
-						if (target) void editRun(Number(target.dataset.run), target.textContent ?? "");
+						if (target?.dataset.key) void editRun(target.dataset.key, target.textContent ?? "");
 					}}
 				>
 					<For each={runs()}>
@@ -40,6 +40,7 @@ export function Article(props: { lit: number | null; onHover: (id: number | null
 							const body = () => inline(stripMarker(run.md));
 							const attrs = () => ({
 								"data-run": String(run.id),
+								"data-key": run.key,
 								...marks(run),
 								classList: { lit: props.lit === run.id },
 								onMouseEnter: () => props.onHover(run.id),
