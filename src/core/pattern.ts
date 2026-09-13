@@ -43,10 +43,10 @@ export interface Part {
 	 *
 	 * An impact in a post-mortem owes a figure; a reason in an essay owes
 	 * nothing of the kind, and demanding one would be worse than saying
-	 * nothing. So it is declared per part, by hand, and only where a bake-off
-	 * said a program could tell the difference: on the four parts carrying it
-	 * today, "contains no digit" caught every hollow section in the corpus and
-	 * raised one false alarm in twelve real ones.
+	 * nothing. So it is declared per part, by hand, and only where a program
+	 * can actually tell the difference. `bun run evaluate` scores what this
+	 * catches and what it costs; adding a part here without running it is
+	 * guessing.
 	 */
 	wants?: "specifics";
 	/** what the writer is asked when the slot is filled but delivers nothing */
@@ -183,10 +183,10 @@ export interface Gap {
 /**
  * The one code-side test for whether a section delivers anything.
  *
- * Deliberately crude, and chosen by measurement rather than by taste: seven
- * candidates were scored against the corpus, and this one caught every hollow
- * section on the parts that declare `wants` while a length threshold managed
- * 42%. It is only ever consulted for those parts, and it only ever produces a
+ * Deliberately crude, and chosen by measurement rather than by taste: the
+ * candidates it beat are in `bun run evaluate`, scored against the corpus, so
+ * replacing it means beating it there rather than arguing about it. It is only
+ * ever consulted for parts that declare `wants`, and it only ever produces a
  * question — never a rejection, and never a word in the article.
  */
 const SPECIFIC = /\d/;
