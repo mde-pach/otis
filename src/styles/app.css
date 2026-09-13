@@ -278,15 +278,18 @@ button {
 	overscroll-behavior-x: contain;
 }
 
-/* each one is your own sections, in the order it would put them */
+/*
+ * Each arrangement drawn as your own sections: one bar apiece, as wide as that
+ * section is long, in the order it would put them. A section keeps its width
+ * wherever it lands, so what moved is visible rather than described.
+ */
 .shape {
 	flex: 1 1 0;
-	min-width: 130px;
+	min-width: 74px;
 	display: flex;
-	flex-direction: column;
-	gap: 2px;
-	text-align: left;
-	padding: 7px 9px;
+	align-items: flex-start;
+	gap: 8px;
+	padding: 8px 10px;
 	border: 1px solid var(--line);
 	border-radius: 3px;
 	background: rgba(0, 0, 0, 0.12);
@@ -304,63 +307,37 @@ button {
 	background: rgba(79, 201, 236, 0.06);
 }
 
-.shape .nm {
+.shape .n {
+	flex: none;
 	font-family: var(--mono);
-	font-size: 0.56rem;
-	letter-spacing: 0.13em;
-	text-transform: uppercase;
+	font-size: 0.54rem;
+	line-height: 1.1;
 	color: var(--ink-3);
-	padding-bottom: 3px;
 }
 
-.shape[aria-current="true"] .nm {
+.shape[aria-current="true"] .n {
 	color: var(--cy);
 }
 
-.shape .ol {
-	font-size: 0.72rem;
-	line-height: 1.5;
-	color: var(--ink-3);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
+.shape .map {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	padding-top: 2px;
 }
 
-.shape[aria-current="true"] .ol {
-	color: var(--ink-2);
-}
-
-/* -------------------------------------------------------- what it did, over */
-/* it covers the section rather than displacing it: the output stays the output */
-.pop {
-	position: absolute;
-	z-index: 4;
-	max-width: 56ch;
-	transform: translateY(calc(-100% - 6px));
-	background: var(--cap);
-	border: 1px solid var(--line-2);
-	border-radius: 3px;
-	padding: 8px 11px 9px;
-	box-shadow: 0 16px 34px -12px rgba(0, 0, 0, 0.85);
-	pointer-events: none;
-}
-
-.pop .k {
+.shape .map i {
 	display: block;
-	font-family: var(--mono);
-	font-size: 0.5rem;
-	letter-spacing: 0.15em;
-	text-transform: uppercase;
-	color: var(--ink-3);
-	padding-bottom: 5px;
+	height: 2px;
+	border-radius: 2px;
+	background: #2d5c78;
+	transition: background 0.12s;
 }
 
-.pop p {
-	margin: 0;
-	font-family: var(--mono);
-	font-size: 0.7rem;
-	line-height: 1.75;
-	color: var(--ink-2);
+.shape[aria-current="true"] .map i {
+	background: rgba(79, 201, 236, 0.75);
 }
 
 /* the two have to be told apart at a glance, and never read as one word */
@@ -396,6 +373,46 @@ button {
 	width: 100%;
 	height: 100%;
 	overflow: visible;
+}
+
+/*
+ * What was done to a section, on that section's own thread. It belongs to
+ * neither side: nothing about it is ever written into your notes or into the
+ * article. It goes when the gutter goes, which is below 880px.
+ */
+.card {
+	position: absolute;
+	left: 50%;
+	top: 0;
+	transform: translate(-50%, -50%);
+	z-index: 7;
+	width: min(340px, 44vw);
+	background: var(--cap);
+	border: 1px solid var(--line-2);
+	border-radius: 3px;
+	padding: 8px 11px 9px;
+	box-shadow: 0 16px 34px -12px rgba(0, 0, 0, 0.85);
+	pointer-events: none;
+}
+
+.card .k {
+	display: block;
+	font-family: var(--mono);
+	font-size: 0.5rem;
+	letter-spacing: 0.15em;
+	text-transform: uppercase;
+	color: var(--ink-3);
+	padding-bottom: 5px;
+}
+
+.card p {
+	margin: 0;
+	font-family: var(--mono);
+	font-size: 0.7rem;
+	line-height: 1.75;
+	color: var(--ink-2);
+	max-height: 40vh;
+	overflow: hidden;
 }
 
 /* ---------------------------------------------------------------- capsule */
