@@ -7,10 +7,9 @@
  * tool's. There is no path here that quietly writes.
  */
 
-import { blockOf } from "./markdown";
 import { checkFaithfulness, formattingOnly } from "./reword";
 import { segment } from "./segments";
-import type { Plan, Reach, Run, Segment } from "./types";
+import type { Confidence, Plan, Reach, Refused, Run, Segment } from "./types";
 
 export interface Built {
 	runs: Run[];
@@ -47,7 +46,6 @@ export function build(notes: string, plan: Plan | null, reach: Reach): Built {
 				md: s.text,
 				from: { start: s.start, end: s.end },
 				fromIndex: s.index,
-				block: s.block,
 			})),
 			dropped: [],
 		};
@@ -73,7 +71,6 @@ export function build(notes: string, plan: Plan | null, reach: Reach): Built {
 				...shape(s),
 				from: { start: s.start, end: s.end },
 				fromIndex: s.index,
-				block: s.block,
 			})),
 			dropped: [],
 		};
@@ -94,7 +91,6 @@ export function build(notes: string, plan: Plan | null, reach: Reach): Built {
 		...shape(s),
 		from: { start: s.start, end: s.end },
 		fromIndex: s.index,
-		block: s.block,
 	}));
 
 	if (reach === 3) {
@@ -115,41 +111,9 @@ export function build(notes: string, plan: Plan | null, reach: Reach): Built {
 	return { runs: runs.map((run, id) => ({ ...run, id })), dropped };
 }
 
-/**
- * Putting the paragraph back.
- *
- * Segments are sentences, so laying every run out on its own line would turn a
- * paragraph the writer wrote into a column of one-liners. Runs that came from
- * the same paragraph and are still next to each other are still that paragraph.
- * The moment the plan moves one away from its neighbours, it stands alone —
- * which is exactly the change the writer wants to be able to see.
- *
- * Only prose joins: a heading, a bullet and a fenced block are their own thing,
- * and so is anything the tool wrote.
- */
-export function paragraphs(runs: Run[]): Run[][] {
-	const out: Run[][] = [];
-	for (const run of runs) {
-		const last = out.at(-1);
-		const head = last?.[0];
-		const together =
-			last !== undefined &&
-			head !== undefined &&
-			run.block !== undefined &&
-			head.block === run.block &&
-			blockOf(head.md) === "p" &&
-			blockOf(run.md) === "p";
-		if (together && last) last.push(run);
-		else out.push([run]);
-	}
-	return out;
-}
-
 /** The article, as the writer would paste it anywhere else. */
 export function toMarkdown(runs: Run[]): string {
-	return paragraphs(runs)
-		.map((group) => group.map((r) => r.md).join(" "))
-		.join("\n\n");
+	return runs.map((r) => r.md).join("\n\n");
 }
 
 export interface Share {
@@ -176,5 +140,104 @@ export function share(runs: Run[]): Share {
 		yours: Math.round((count.yours / total) * 100),
 		reworded: Math.round((count.reworded / total) * 100),
 		written: Math.round((count.written / total) * 100),
+	};
+}
+
+/**
+ * A proposal, in the writer's terms.
+ *
+ * `build` turns a plan into an article; this turns one into a list of things
+ * someone can say no to. Nothing here changes anything — it is what the review
+ * reads so the writer can see what is being suggested before it is true.
+ */
+export interface Proposal {
+	/** the sections in the order it wants, each with where it sits now */
+	order: { index: number; text: string; from: number }[];
+	moved: boolean;
+	short: { index: number; was: string; now: string }[];
+	drop: { index: number; text: string }[];
+	written: { n: number; md: string; because: string; confidence: Confidence; after: string }[];
+	because: string;
+}
+
+export function read(notes: string, plan: Plan): Proposal {
+	const segments = segment(notes);
+
+	const placed = segments
+		.map((s) => ({ s, at: plan.at[s.index] }))
+		.filter((p) => p.at !== null && p.at !== undefined)
+		.sort((a, b) => (a.at as number) - (b.at as number));
+
+	const order = placed.map((p, position) => ({
+		index: p.s.index,
+		text: p.s.text,
+		from: position,
+	}));
+
+	const short = Object.entries(plan.short)
+		.map(([key, now]) => ({ index: Number(key), was: segments[Number(key)]?.text ?? "", now }))
+		.filter((entry) => entry.was && checkFaithfulness(entry.was, entry.now).passed);
+
+	const drop = segments
+		.filter((s) => plan.at[s.index] === null || plan.at[s.index] === undefined)
+		.map((s) => ({ index: s.index, text: s.text }));
+
+	return {
+		order,
+		moved: placed.some((p, position) => p.s.index !== position),
+		short,
+		drop,
+		written: plan.written.map((w, n) => ({
+			n,
+			md: w.md,
+			because: w.because,
+			confidence: w.confidence,
+			after: segments[w.after]?.text ?? "",
+		})),
+		because: plan.because,
+	};
+}
+
+/**
+ * The proposal minus what the writer turned down.
+ *
+ * Refusing the order does not throw the proposal away: the shortenings and the
+ * drafts stand, in the writer's own order. Every part is refused on its own,
+ * because that is what having a say means.
+ */
+export function settle(notes: string, plan: Plan, refused: Refused): Plan {
+	const segments = segment(notes);
+
+	const kept = segments
+		.map((s) => s.index)
+		.filter((i) => plan.at[i] !== null || refused[`d${i}`] === true);
+
+	const order = refused.m
+		? [...kept].sort((a, b) => a - b)
+		: [...kept].sort((a, b) => {
+				const pa = plan.at[a];
+				const pb = plan.at[b];
+				// something the writer rescued has no position of its own; it goes
+				// back where they wrote it, next to whatever it was written beside
+				if (pa === null || pa === undefined) return a - b;
+				if (pb === null || pb === undefined) return a - b;
+				return pa - pb;
+			});
+
+	const at: (number | null)[] = segments.map(() => null);
+	order.forEach((index, position) => {
+		at[index] = position;
+	});
+
+	const short: Record<number, string> = {};
+	for (const [key, text] of Object.entries(plan.short)) {
+		if (!refused[`s${key}`]) short[Number(key)] = text;
+	}
+
+	return {
+		...plan,
+		at,
+		short,
+		written: plan.written.filter((_, n) => !refused[`w${n}`]),
 	};
 }
