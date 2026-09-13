@@ -24,6 +24,19 @@ your notes never covered. Each of those is a different colour on the page:
 Nothing is captioned. Colour is the only thing that says where a word came
 from, and no other part of the interface is allowed either hue.
 
+## Nothing runs on its own
+
+Typing, moving the dial and rewriting the brief are all free. Only **run**
+spends a request, and one request answers all four reach settings — the dial is
+a render-time filter over the plan already in hand, so reading your text four
+ways costs one call.
+
+A plan is stamped with the notes it was made for. Applied to a different
+document it would be a map with no entry for most of what you just pasted, so
+`build` sets it aside entirely and shows your text in your order rather than
+silently dropping the parts it cannot place. Edit a word and the plan still
+fits but is marked behind: the button reads *run again*.
+
 ## Reach
 
 One dial, four settings, from the writer's side rather than the model's:
@@ -43,6 +56,7 @@ making, and a short reference note, and it answers in **indices**:
 
 ```ts
 interface Plan {
+  basis: string;                          // the notes it was made for
   at: (number | null)[];                  // where each of your segments goes, or null
   format: Record<number, string>;         // same words, markdown added
   short: Record<number, string>;          // fewer words, same claims
