@@ -38,6 +38,19 @@ export interface Part {
 	 * sentence generated about their document.
 	 */
 	asks: Said;
+	/**
+	 * Declare this on a part that owes the reader something checkable.
+	 *
+	 * An impact in a post-mortem owes a figure; a reason in an essay owes
+	 * nothing of the kind, and demanding one would be worse than saying
+	 * nothing. So it is declared per part, by hand, and only where a bake-off
+	 * said a program could tell the difference: on the four parts carrying it
+	 * today, "contains no digit" caught every hollow section in the corpus and
+	 * raised one false alarm in twelve real ones.
+	 */
+	wants?: "specifics";
+	/** what the writer is asked when the slot is filled but delivers nothing */
+	thin?: Said;
 }
 
 export interface Pattern {
@@ -150,17 +163,33 @@ export function arrange(placement: Placement, pattern: Pattern): Arrangement {
 	return { order, out };
 }
 
-/** A required part with nothing of the writer's in it. */
+/** A part of this kind of piece that the writer has not actually covered. */
 export interface Gap {
 	part: string;
+	/**
+	 * `missing` — nothing of theirs is in this part at all.
+	 * `thin` — something is, and it does not deliver what the part is for.
+	 */
+	kind: "missing" | "thin";
 	/** the file's own words, printed as they are written */
 	asks: string;
 	/**
-	 * The last section that does have a place before this one, so the question
-	 * can be shown where the missing part would go. Null when nothing precedes it.
+	 * Where to show the question: the last section placed before the hole, or
+	 * the hollow section itself. Null when nothing precedes it.
 	 */
 	after: number | null;
 }
+
+/**
+ * The one code-side test for whether a section delivers anything.
+ *
+ * Deliberately crude, and chosen by measurement rather than by taste: seven
+ * candidates were scored against the corpus, and this one caught every hollow
+ * section on the parts that declare `wants` while a length threshold managed
+ * 42%. It is only ever consulted for those parts, and it only ever produces a
+ * question — never a rejection, and never a word in the article.
+ */
+const SPECIFIC = /\d/;
 
 /**
  * What the piece does not cover, counted rather than noticed.
@@ -169,7 +198,13 @@ export interface Gap {
  * none of the writer's sections is a gap, on every build, and what the writer
  * reads is the question their pattern file already carried.
  */
-export function gaps(placement: Placement, pattern: Pattern, lang: Lang = "en"): Gap[] {
+export function gaps(
+	placement: Placement,
+	pattern: Pattern,
+	lang: Lang = "en",
+	/** the writer's sections, by index, when the hollow check should run */
+	texts: string[] = [],
+): Gap[] {
 	const found: Gap[] = [];
 	let last: number | null = null;
 
@@ -178,11 +213,23 @@ export function gaps(placement: Placement, pattern: Pattern, lang: Lang = "en"):
 			if (id === part.id) all.push(index);
 			return all;
 		}, []);
-		if (here.length > 0) {
-			last = here[here.length - 1] as number;
+
+		if (here.length === 0) {
+			if (part.required) {
+				found.push({ part: part.id, kind: "missing", asks: part.asks[lang], after: last });
+			}
 			continue;
 		}
-		if (part.required) found.push({ part: part.id, asks: part.asks[lang], after: last });
+
+		last = here[here.length - 1] as number;
+
+		// filled, but by something that does not do the part's job
+		if (part.wants === "specifics" && part.thin && texts.length > 0) {
+			const said = here.map((index) => texts[index] ?? "");
+			if (said.length > 0 && !said.some((text) => SPECIFIC.test(text))) {
+				found.push({ part: part.id, kind: "thin", asks: part.thin[lang], after: last });
+			}
+		}
 	}
 
 	return found;

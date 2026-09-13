@@ -106,9 +106,17 @@ export function build(notes: string, plan: Plan | null, options: BuildOptions): 
 		runs: order
 			.map((index) => byIndex.get(index))
 			.filter((s): s is Segment => Boolean(s))
-			.map((s, id) => run(s, id, true)),
+			.map((s, id) => ({ ...run(s, id, true), part: placement[s.index] ?? undefined })),
 		dropped: out.map((index) => byIndex.get(index)).filter((s): s is Segment => Boolean(s)),
-		gaps: reach === 3 ? gaps(placement, pattern, lang) : [],
+		gaps:
+			reach === 3
+				? gaps(
+						placement,
+						pattern,
+						lang,
+						segments.map((s) => s.text),
+					)
+				: [],
 		arranged: true,
 	};
 }
