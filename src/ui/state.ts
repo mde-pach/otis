@@ -9,12 +9,12 @@ import {
 	type Doc,
 	emptyDoc,
 	fits,
+	outline,
 	type Reach,
-	type Refused,
 	type Run,
-	read,
+	type Shape,
 	segment,
-	settle,
+	shapeOf,
 	share,
 	stale,
 	toMarkdown,
@@ -28,15 +28,13 @@ const [busy, setBusy] = createSignal(false);
 const [message, setMessage] = createSignal("");
 const [apiKey, setKeySignal] = createSignal(loadKey());
 const [model, setModelSignal] = createSignal(loadModel());
-/** what the writer has turned down in the proposal they are looking at */
-const [refused, setRefused] = createSignal<Refused>({});
 
 export const state = { doc, busy, message, apiKey, model };
 export const patterns = PATTERNS;
 export const hasKey = () => apiKey().trim().length > 0;
 
 /** Everything the panes draw comes from here, and it is pure. */
-export const view = () => build(doc.notes, doc.plan, doc.reach);
+export const view = () => build(doc.notes, doc.plan, doc.reach, doc.shape);
 export const segments = () => segment(doc.notes);
 export const runs = () => {
 	const built = view().runs;
@@ -61,15 +59,18 @@ export const dropped_plan = () => Boolean(doc.plan) && !fits(doc.notes, doc.plan
 /** The plan still fits, but the words under it have moved on. */
 export const isStale = () => stale(doc.notes, doc.plan);
 
-/** A proposal waiting on the writer. Nothing in it is true yet. */
-export const proposal = () => (doc.review ? read(doc.notes, doc.review) : null);
-export const refusals = refused;
-export const isRefused = (key: string) => refused()[key] === true;
-export function refuse(key: string, no: boolean) {
-	const next = { ...refused() };
-	if (no) next[key] = true;
-	else delete next[key];
-	setRefused(next);
+/**
+ * The arrangements on offer, and the one the article is in.
+ *
+ * Every one of them came back in the same request, so moving between them is
+ * free: it is the writer choosing the shape of their piece, not asking again.
+ */
+export const shapes = (): Shape[] => doc.plan?.shapes ?? [];
+export const shape = () => shapeOf(doc.plan, doc.shape);
+export const outlineOf = (one: Shape) => outline(doc.notes, one);
+export async function setShape(which: number) {
+	setDoc({ shape: which, edits: {} });
+	await keep();
 }
 
 async function keep() {
@@ -79,7 +80,7 @@ async function keep() {
 
 export async function init() {
 	const saved = await store.load(ID);
-	if (saved?.notes) setDoc({ ...saved, edits: saved.edits ?? {}, review: saved.review ?? null });
+	if (saved?.notes) setDoc({ ...saved, edits: saved.edits ?? {}, shape: saved.shape ?? 0 });
 	else setDoc({ ...emptyDoc(ID), notes: "", brief: "" });
 }
 
@@ -110,9 +111,8 @@ export async function setBrief(brief: string) {
  * The only thing in the app that spends a request, and it only ever happens
  * because the writer pressed it.
  *
- * What comes back is a proposal, not an article. It is put in front of them
- * with what it wants to move, shorten, leave out and write, and none of it is
- * true until they say so.
+ * It comes back with two or three arrangements and applies the first. The
+ * others are already paid for: switching between them asks nothing.
  */
 export async function run() {
 	if (busy()) return;
@@ -133,15 +133,16 @@ export async function run() {
 		setBusy(true);
 		setMessage("");
 		const planner = createLlmPlanner({ apiKey: apiKey(), model: model() });
-		const review = await planner.plan({
+		const plan = await planner.plan({
 			notes,
 			segments: segment(notes),
 			brief: doc.brief,
 			pattern: chosen.text,
 		});
-		setRefused({});
-		setDoc("review", review);
-		setMessage("");
+		// edits were filed against the previous plan's runs; they do not survive it
+		setDoc({ plan, shape: 0, edits: {} });
+		setMessage(plan.shapes[0]?.because ?? "");
+		if (doc.reach === 0) setDoc("reach", 2);
 	} catch (error) {
 		const raw = (error as Error).message ?? String(error);
 		setMessage(
@@ -154,31 +155,10 @@ export async function run() {
 	}
 }
 
-/** Yes, to what is left of it. */
-export async function apply() {
-	const review = doc.review;
-	if (!review) return;
-	const plan = settle(doc.notes, review, refused());
-	// edits were filed against the previous plan's runs; they do not survive it
-	setDoc({ plan, review: null, edits: {} });
-	setMessage(review.because);
-	if (doc.reach === 0) setDoc("reach", 2);
-	setRefused({});
-	await keep();
-}
-
-/** No, to all of it. Your text is untouched and nothing was spent twice. */
-export async function discard() {
-	setDoc("review", null);
-	setRefused({});
-	await keep();
-}
-
 /** Starting over is the writer's, not something that happens to them. */
 export async function clearPlan() {
-	setDoc({ plan: null, review: null, edits: {}, reach: 0 });
+	setDoc({ plan: null, shape: 0, edits: {}, reach: 0 });
 	setMessage("");
-	setRefused({});
 	await keep();
 }
 

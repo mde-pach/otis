@@ -3,7 +3,7 @@ import { About } from "./About";
 import { Article } from "./Article";
 import { Capsule } from "./Capsule";
 import { Notes } from "./Notes";
-import { Review } from "./Review";
+import { Shapes } from "./Shapes";
 import { dropped, init, runs } from "./state";
 import { Threads } from "./Threads";
 
@@ -45,9 +45,8 @@ export default function App() {
 				<div class="app">
 					<Notes lit={litSegment()} dropped={dropped()} onHover={fromNotes} />
 					<Threads lit={lit()} />
-					<Article lit={lit()} onHover={setLit} />
+					<Article lit={lit()} onHover={setLit} shapes={<Shapes />} />
 					<Capsule />
-					<Review />
 				</div>
 			</Show>
 		</main>
