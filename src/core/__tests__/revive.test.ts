@@ -5,8 +5,8 @@ import { reviveDoc } from "../types";
 const NOTES = "First one.\n\nSecond one.\n\nThird one.";
 
 describe("a document saved by an older version", () => {
-	/** what the store held before a run came back with more than one arrangement */
-	const before = {
+	/** what the store held when an arrangement was a list of positions */
+	const positions = {
 		id: "current",
 		notes: NOTES,
 		brief: "an essay",
@@ -14,61 +14,89 @@ describe("a document saved by an older version", () => {
 		patternId: "essay",
 		plan: {
 			basis: NOTES,
-			at: [1, 0, 2],
+			shapes: [{ name: "the claim first", at: [1, 0, 2], because: "led with it" }],
 			format: {},
 			short: {},
-			written: [],
-			because: "led with it",
+			written: [{ after: 1, md: "a gap", confidence: "low", because: "missing" }],
 		},
-		review: null,
 		edits: {},
 		updatedAt: 1,
 	};
 
-	test("its plan is carried forward into an arrangement rather than crashing", () => {
-		const doc = reviveDoc("current", before);
-		expect(doc.plan?.shapes).toHaveLength(1);
-		expect(doc.plan?.shapes[0]?.at).toEqual([1, 0, 2]);
-		expect(doc.shape).toBe(0);
+	test("its plan is dropped rather than reinterpreted into an order nobody chose", () => {
+		const doc = reviveDoc("current", positions);
+		expect(doc.plan).toBeNull();
 	});
 
-	test("and the article it made still renders", () => {
-		const doc = reviveDoc("current", before);
-		expect(build(doc.notes, doc.plan, doc.reach, doc.shape).runs.map((r) => r.fromIndex)).toEqual([
-			1, 0, 2,
-		]);
+	test("but the writer's text survives, which is the only thing that matters", () => {
+		const doc = reviveDoc("current", positions);
+		expect(doc.notes).toBe(NOTES);
+		expect(doc.brief).toBe("an essay");
 	});
 
-	test("the field that no longer exists is simply not there", () => {
-		expect("review" in reviveDoc("current", before)).toBe(false);
+	test("and what renders is their own order, not an empty page", () => {
+		const doc = reviveDoc("current", positions);
+		const built = build(doc.notes, doc.plan, { reach: doc.reach, which: doc.shape });
+		expect(built.runs.map((r) => r.fromIndex)).toEqual([0, 1, 2]);
 	});
 });
 
-describe("a document that cannot be read", () => {
-	const kept = (plan: unknown) => reviveDoc("current", { notes: NOTES, plan });
+describe("a document saved by this version", () => {
+	const current = {
+		id: "current",
+		notes: NOTES,
+		brief: "",
+		reach: 2,
+		patternId: "essay",
+		plan: {
+			basis: NOTES,
+			shapes: [
+				{ patternId: "essay", because: "it argues", placement: ["claim", "reason", null] },
+				{ patternId: "internal-note", because: "it is short", placement: null },
+			],
+			format: {},
+			short: {},
+		},
+		shape: 1,
+		edits: {},
+		updatedAt: 1,
+	};
 
-	test("keeps the writer's text and drops only the plan", () => {
-		for (const plan of [undefined, null, 42, "a plan", {}, { basis: 1 }, { basis: NOTES }]) {
-			const doc = kept(plan);
-			expect(doc.notes).toBe(NOTES);
-			expect(doc.plan).toBeNull();
-		}
+	test("placements come back as they went in", () => {
+		const doc = reviveDoc("current", current);
+		expect(doc.plan?.shapes[0]?.placement).toEqual(["claim", "reason", null]);
 	});
 
-	test("nothing stored at all is an empty document, not an exception", () => {
+	test("a card that was never organised stays un-organised", () => {
+		const doc = reviveDoc("current", current);
+		expect(doc.plan?.shapes[1]?.placement).toBeNull();
+		expect(shapeOf(doc.plan, doc.shape)?.patternId).toBe("internal-note");
+	});
+
+	test("a placement full of things that are not part ids is read as left out", () => {
+		const doc = reviveDoc("current", {
+			...current,
+			plan: {
+				...current.plan,
+				shapes: [{ patternId: "essay", because: "", placement: [3, {}, "claim"] }],
+			},
+		});
+		expect(doc.plan?.shapes[0]?.placement).toEqual([null, null, "claim"]);
+	});
+});
+
+describe("junk in the store", () => {
+	test("nothing at all is an empty document, not a crash", () => {
 		expect(reviveDoc("current", null).notes).toBe("");
-		expect(reviveDoc("current", "rubbish").plan).toBeNull();
 	});
 
-	test("a reach that is not a reach falls back to your text untouched", () => {
+	test("a plan with no shapes is no plan", () => {
+		expect(
+			reviveDoc("current", { notes: NOTES, plan: { basis: NOTES, shapes: [] } }).plan,
+		).toBeNull();
+	});
+
+	test("a reach nobody recognises falls back to leaving the text alone", () => {
 		expect(reviveDoc("current", { notes: NOTES, reach: 9 }).reach).toBe(0);
-	});
-});
-
-describe("asking a plan for an arrangement it has not got", () => {
-	test("is nothing, never a crash", () => {
-		expect(shapeOf(null, 0)).toBeNull();
-		expect(shapeOf({ shapes: [] } as never, 0)).toBeNull();
-		expect(shapeOf({} as never, 0)).toBeNull();
 	});
 });

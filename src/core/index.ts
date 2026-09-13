@@ -1,5 +1,6 @@
 export * from "./diff";
 export * from "./markdown";
+export * from "./pattern";
 export * from "./plan";
 export * from "./ports";
 export * from "./reword";

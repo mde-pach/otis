@@ -1,3 +1,5 @@
+import type { Placement } from "./pattern";
+
 /**
  * Text in, text out.
  *
@@ -21,10 +23,7 @@ export interface Segment {
 	end: number;
 }
 
-export type RunKind = "kept" | "reworded" | "written";
-
-/** Confidence is only meaningful for written runs: how far it reached. */
-export type Confidence = "high" | "low";
+export type RunKind = "kept" | "reworded";
 
 /** A stretch of the article, and where it came from. */
 export interface Run {
@@ -39,31 +38,33 @@ export interface Run {
 	/** absent exactly when nothing of the writer's sits under this run */
 	from?: { start: number; end: number };
 	/** the segment it came from, so both panes can name the same thing */
-	fromIndex?: number;
-	confidence?: Confidence;
+	fromIndex: number;
 }
 
 /**
- * One arrangement of the writer's sections: a whole article, in an order.
+ * One kind of piece on offer, and the article it would make.
  *
- * A run comes back with several of these rather than one, because "which shape
- * should this take" is the writer's question and a model guessing at it once is
- * worse than offering the two or three it can actually make. They cost one
- * request between them, and switching costs nothing.
+ * A card is a pattern: one kind, one arrangement, one card. The model chose the
+ * kind; it did not choose the order, which belongs to the pattern file, and it
+ * did not choose the placement's shape, which is checked before it is used.
  */
 export interface Shape {
-	/** three or four words for what this arrangement is */
-	name: string;
-	/** where each segment goes in it, or null for left out */
-	at: (number | null)[];
-	/** one sentence, plain words, on why this order */
+	patternId: string;
+	/** one sentence on why this kind, for these notes */
 	because: string;
+	/**
+	 * Where each of the writer's sections goes in it, or null throughout while
+	 * this card has not been organised yet. Only the card they are reading is
+	 * organised; the other two cost nothing until they are chosen.
+	 */
+	placement: Placement | null;
 }
 
 /**
- * What the model proposes, expressed only over the writer's own segment
- * indices. It cannot express "put a heading here" or "make a section": the only
- * text it may contribute arrives in `written`, and that is marked.
+ * What came back, expressed only over the writer's own segment indices.
+ *
+ * There is no field here the model can put prose in. What it is missing is not
+ * in this object at all — that is computed from the pattern at render time.
  */
 export interface Plan {
 	/**
@@ -72,33 +73,22 @@ export interface Plan {
 	 * entry for — build() checks this rather than trusting the indices.
 	 */
 	basis: string;
-	/** the arrangements on offer; the first is the one the article opens in */
+	/** the kinds on offer; the article opens in the first */
 	shapes: Shape[];
 	/** same words, Markdown added. Formatting is not rewriting. */
 	format: Record<number, string>;
 	/** fewer words, same claims. Passes the faithfulness gate or it is dropped. */
 	short: Record<number, string>;
-	/** the model's own text, anchored after one of your segments */
-	written: Written[];
 }
 
 export const REACH = [
 	{ id: 0, name: "as written", does: "nothing is touched" },
 	{ id: 1, name: "tidy", does: "shortens, keeps your order" },
-	{ id: 2, name: "reorder", does: "moves and drops, writes nothing" },
-	{ id: 3, name: "rebuild", does: "and writes what is missing" },
+	{ id: 2, name: "reorder", does: "puts your sections in the shape's order" },
+	{ id: 3, name: "and ask", does: "names the parts your notes do not cover" },
 ] as const;
 
 export type Reach = 0 | 1 | 2 | 3;
-
-/** A gap the notes do not cover, drafted into place and always marked. */
-export interface Written {
-	after: number;
-	md: string;
-	confidence: Confidence;
-	/** what was missing, said to the writer */
-	because: string;
-}
 
 export interface Doc {
 	id: string;
@@ -145,33 +135,27 @@ function revivePlan(raw: unknown): Plan | null {
 
 	const offered = Array.isArray(said.shapes) ? said.shapes : [];
 	const shapes: Shape[] = offered
-		.filter((one): one is Shape => Boolean(one) && Array.isArray((one as Shape).at))
+		.filter((one): one is Record<string, unknown> => Boolean(one) && typeof one === "object")
+		.filter((one) => typeof one.patternId === "string")
 		.map((one) => ({
-			name: typeof one.name === "string" ? one.name : "arrangement",
-			at: one.at,
+			patternId: one.patternId as string,
 			because: typeof one.because === "string" ? one.because : "",
+			// a placement it cannot read is a placement it does not have, and an
+			// un-organised card is a state the app already knows how to be in
+			placement: Array.isArray(one.placement)
+				? (one.placement as unknown[]).map((id) => (typeof id === "string" ? id : null))
+				: null,
 		}));
 
-	// a plan from before a run came back with more than one arrangement
-	if (shapes.length === 0 && Array.isArray(said.at)) {
-		shapes.push({
-			name: "as it was",
-			at: said.at as (number | null)[],
-			because: typeof said.because === "string" ? said.because : "",
-		});
-	}
+	// a plan from before a pattern was a list of parts. Its positions mean
+	// nothing here, and inventing a reading of them would put the writer's
+	// sections in an order nobody chose — so the notes stay and the plan goes.
 	if (shapes.length === 0) return null;
 
 	const map = (value: unknown): Record<number, string> =>
 		value && typeof value === "object" ? (value as Record<number, string>) : {};
 
-	return {
-		basis: said.basis,
-		shapes,
-		format: map(said.format),
-		short: map(said.short),
-		written: Array.isArray(said.written) ? (said.written as Written[]) : [],
-	};
+	return { basis: said.basis, shapes, format: map(said.format), short: map(said.short) };
 }
 
 export function reviveDoc(id: string, saved: unknown): Doc {

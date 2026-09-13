@@ -4,9 +4,12 @@
  * The one hard promise is that the tool never adds a claim. It is enforced
  * here, deterministically, before anything reaches the page:
  *
- *   - a shortening that keeps almost none of the original's words is a rewrite
+ *   - a shortening may only use words the sentence already contains. "Fewer
+ *     words, same claims" is taken literally: it is a selection of your words,
+ *     so a clause that reads well and was never yours cannot survive it
  *   - one that introduces a number, unit or identifier the original did not
  *     contain has invented a fact
+ *   - one that keeps almost none of the original's words is a rewrite
  *
  * A failed shortening is not rendered and then withdrawn. It never exists: the
  * planner drops it and the writer's own sentence stands.
@@ -25,6 +28,8 @@ function facts(text: string): Set<string> {
 export interface Check {
 	retention: number;
 	addedFacts: string[];
+	/** words in the shortening that the writer's sentence does not contain */
+	addedWords: string[];
 	passed: boolean;
 	reason: string;
 }
@@ -47,6 +52,23 @@ export function formattingOnly(original: string, proposed: string): boolean {
 	return plain(original).replace(/\s+/g, " ") === plain(proposed).replace(/\s+/g, " ");
 }
 
+/** The words of a sentence, counted, so a shortening cannot quietly add one. */
+function bag(text: string): Map<string, number> {
+	const counted = new Map<string, number>();
+	for (const word of words(text)) counted.set(word, (counted.get(word) ?? 0) + 1);
+	return counted;
+}
+
+function words(text: string): string[] {
+	return text
+		.toLowerCase()
+		.normalize("NFD")
+		.replace(/\p{M}/gu, "")
+		.replace(/[^\p{L}\p{N}\s]/gu, " ")
+		.split(/\s+/)
+		.filter(Boolean);
+}
+
 export function checkFaithfulness(original: string, proposed: string, minRetention = 0.25): Check {
 	const before = plain(original);
 	const after = plain(proposed);
@@ -55,57 +77,56 @@ export function checkFaithfulness(original: string, proposed: string, minRetenti
 	const known = facts(before);
 	const addedFacts = [...facts(after)].filter((f) => !known.has(f));
 
+	// every word of a shortening has to be a word of the sentence it shortens
+	const available = bag(before);
+	const addedWords: string[] = [];
+	for (const word of words(after)) {
+		const left = available.get(word) ?? 0;
+		if (left > 0) available.set(word, left - 1);
+		else addedWords.push(word);
+	}
+
 	if (addedFacts.length > 0) {
 		return {
 			retention,
 			addedFacts,
+			addedWords,
 			passed: false,
 			reason: `it introduces ${addedFacts.join(", ")}, which your sentence does not say`,
+		};
+	}
+	if (addedWords.length > 0) {
+		return {
+			retention,
+			addedFacts,
+			addedWords,
+			passed: false,
+			reason: `it puts words in your mouth — ${[...new Set(addedWords)].slice(0, 4).join(", ")}`,
 		};
 	}
 	if (retention < minRetention) {
 		return {
 			retention,
 			addedFacts,
+			addedWords,
 			passed: false,
 			reason: `it keeps only ${Math.round(retention * 100)}% of your words, which is rewriting rather than shortening`,
 		};
 	}
 	if (after === before) {
-		return { retention, addedFacts, passed: false, reason: "it is the sentence you already wrote" };
+		return {
+			retention,
+			addedFacts,
+			addedWords,
+			passed: false,
+			reason: "it is the sentence you already wrote",
+		};
 	}
 	return {
 		retention,
 		addedFacts,
+		addedWords,
 		passed: true,
-		reason: `keeps ${Math.round(retention * 100)}% of your words and adds no facts`,
+		reason: `keeps ${Math.round(retention * 100)}% of your words and adds none of its own`,
 	};
-}
-
-/**
- * Saying again what the writer already said.
- *
- * The prompt forbids putting their words in `written`, and a model will do it
- * anyway — it paraphrases a section it likes and the piece then makes the same
- * point twice, once in the writer's voice and once in the tool's. So the words
- * are counted. Accents are folded and short words dropped, because agreement on
- * "les" is not evidence of anything; agreement on "investissements" is.
- */
-function content(text: string): string[] {
-	return plain(text)
-		.normalize("NFD")
-		.replace(/[̀-ͯ]/g, "")
-		.toLowerCase()
-		.replace(/[^\p{L}\p{N}\s]/gu, " ")
-		.split(/\s+/)
-		.filter((word) => word.length > 3);
-}
-
-export function restates(text: string, notes: string, limit = 0.7): boolean {
-	const words = content(text);
-	// too short to tell a restatement from a heading that happens to share a noun
-	if (words.length < 5) return false;
-	const known = new Set(content(notes));
-	const seen = words.filter((word) => known.has(word)).length;
-	return seen / words.length >= limit;
 }
