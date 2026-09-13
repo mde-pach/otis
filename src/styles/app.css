@@ -406,9 +406,34 @@ button {
 }
 
 /*
- * A part of this kind of piece that none of your sections went into. The words
- * are the pattern file's, printed as they are written there — the tool is
- * asking you, in the gutter, and writing nothing into either pane.
+ * The spine: which part of this kind of piece each of your sections is serving,
+ * marked where that part begins. It is the one thing the tool is never wrong
+ * about, and it is how you catch a section standing in for a part it is not.
+ */
+.gutter .slot {
+	position: absolute;
+	left: 0;
+	right: 0;
+	text-align: center;
+	font-family: var(--mono);
+	font-size: 0.48rem;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--line-2);
+	pointer-events: none;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	padding: 0 3px;
+}
+
+/*
+ * A part of this kind of piece your sections do not cover. The words are the
+ * pattern file's, printed as they are written there — the tool is asking you,
+ * in the gutter, and writing nothing into either pane.
+ *
+ * Amber is a part nothing was placed in. Cyan is a part something was placed
+ * in that does not do its job — a cost with no figure, a state with no date.
  */
 .gutter .ask {
 	position: absolute;
@@ -426,12 +451,21 @@ button {
 	pointer-events: none;
 }
 
+.gutter .ask[data-kind="thin"] {
+	border-left-color: var(--cy);
+	background: rgba(79, 201, 236, 0.07);
+}
+
 .gutter .ask .p {
 	font-family: var(--mono);
 	font-size: 0.5rem;
 	letter-spacing: 0.14em;
 	text-transform: uppercase;
 	color: var(--am);
+}
+
+.gutter .ask[data-kind="thin"] .p {
+	color: var(--cy);
 }
 
 .gutter .ask .q {
