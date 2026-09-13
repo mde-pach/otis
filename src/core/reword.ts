@@ -1,20 +1,20 @@
 /**
- * Rewording, and the gate every reword has to pass.
+ * The gate every shortening has to pass.
  *
- * The product's one hard promise is that the tool never adds a claim. That is
- * enforced here, deterministically, before a suggestion is ever shown:
+ * The one hard promise is that the tool never adds a claim. It is enforced
+ * here, deterministically, before anything reaches the page:
  *
- *   - a reword that keeps almost none of the original's words is not a reword
- *   - a reword that introduces a number, a unit or a code identifier the
- *     original did not contain has invented a fact
+ *   - a shortening that keeps almost none of the original's words is a rewrite
+ *   - one that introduces a number, unit or identifier the original did not
+ *     contain has invented a fact
  *
- * A failed suggestion is not rendered and then rejected. It never exists.
+ * A failed shortening is not rendered and then withdrawn. It never exists: the
+ * planner drops it and the writer's own sentence stands.
  */
 
 import { wordRetention } from "./diff";
-import type { FaithfulnessCheck, Project, Reword } from "./types";
 
-/** Numbers, measurements, versions, and code-ish identifiers: things that can be wrong. */
+/** Numbers, measurements, versions and code-ish identifiers: things that can be wrong. */
 const FACT =
 	/\b\d+(?:[.,]\d+)?\s*(?:%|ms|s|m|h|kb|mb|gb|tb|k|x)?(?![a-z])|\b[a-z_$][\w$]*\(\)|\b[A-Z][A-Za-z0-9]*_[A-Z0-9_]+\b/g;
 
@@ -22,21 +22,38 @@ function facts(text: string): Set<string> {
 	return new Set((text.match(FACT) ?? []).map((f) => f.replace(/\s+/g, "").toLowerCase()));
 }
 
-export interface RewordGateOptions {
-	/** Below this share of retained words, it is a rewrite rather than a reword. */
-	minRetention?: number;
+export interface Check {
+	retention: number;
+	addedFacts: string[];
+	passed: boolean;
+	reason: string;
 }
 
-export function checkFaithfulness(
-	original: string,
-	proposed: string,
-	options: RewordGateOptions = {},
-): FaithfulnessCheck {
-	const { minRetention = 0.25 } = options;
-	const retention = wordRetention(original, proposed);
+/** Markdown is formatting, not words: it is stripped before anything is compared. */
+export function plain(md: string): string {
+	return md
+		.replace(/```[\s\S]*?```/g, " ")
+		.replace(/^#{1,6}\s+/gm, "")
+		.replace(/^[-*]\s+/gm, "")
+		.replace(/\*\*([^*]+)\*\*/g, "$1")
+		.replace(/\*([^*]+)\*/g, "$1")
+		.replace(/`([^`]+)`/g, "$1")
+		.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+		.trim();
+}
 
-	const before = facts(original);
-	const addedFacts = [...facts(proposed)].filter((f) => !before.has(f));
+/** True when the only difference is Markdown. Those runs stay marked as yours. */
+export function formattingOnly(original: string, proposed: string): boolean {
+	return plain(original).replace(/\s+/g, " ") === plain(proposed).replace(/\s+/g, " ");
+}
+
+export function checkFaithfulness(original: string, proposed: string, minRetention = 0.25): Check {
+	const before = plain(original);
+	const after = plain(proposed);
+	const retention = wordRetention(before, after);
+
+	const known = facts(before);
+	const addedFacts = [...facts(after)].filter((f) => !known.has(f));
 
 	if (addedFacts.length > 0) {
 		return {
@@ -51,10 +68,10 @@ export function checkFaithfulness(
 			retention,
 			addedFacts,
 			passed: false,
-			reason: `it keeps only ${Math.round(retention * 100)}% of your words, which is rewriting rather than rewording`,
+			reason: `it keeps only ${Math.round(retention * 100)}% of your words, which is rewriting rather than shortening`,
 		};
 	}
-	if (proposed.trim() === original.trim()) {
+	if (after === before) {
 		return { retention, addedFacts, passed: false, reason: "it is the sentence you already wrote" };
 	}
 	return {
@@ -63,69 +80,4 @@ export function checkFaithfulness(
 		passed: true,
 		reason: `keeps ${Math.round(retention * 100)}% of your words and adds no facts`,
 	};
-}
-
-function nextRewordId(project: Project): string {
-	let max = 0;
-	for (const r of project.rewords) {
-		const n = Number.parseInt(r.id.replace(/\D/g, ""), 10);
-		if (Number.isFinite(n) && n > max) max = n;
-	}
-	return `r${String(max + 1).padStart(2, "0")}`;
-}
-
-/** Returns the project unchanged when the suggestion fails the gate. */
-export function proposeReword(
-	project: Project,
-	blockId: string,
-	proposed: string,
-	now = Date.now(),
-): { project: Project; rejected?: FaithfulnessCheck } {
-	const block = project.blocks.find((b) => b.id === blockId);
-	if (!block) return { project };
-
-	const check = checkFaithfulness(block.text, proposed);
-	if (!check.passed) return { project, rejected: check };
-
-	const reword: Reword = {
-		id: nextRewordId(project),
-		blockId,
-		original: block.text,
-		proposed,
-		createdAt: now,
-		status: "pending",
-		check,
-	};
-	return {
-		project: { ...project, rewords: [...project.rewords, reword], updatedAt: now },
-	};
-}
-
-export function acceptReword(project: Project, rewordId: string): Project {
-	const reword = project.rewords.find((r) => r.id === rewordId);
-	if (reword?.status !== "pending") return project;
-	return {
-		...project,
-		blocks: project.blocks.map((b) =>
-			b.id === reword.blockId
-				? { ...b, text: reword.proposed, acceptedRewordText: reword.proposed }
-				: b,
-		),
-		rewords: project.rewords.map((r) => (r.id === rewordId ? { ...r, status: "accepted" } : r)),
-		updatedAt: Date.now(),
-	};
-}
-
-export function rejectReword(project: Project, rewordId: string): Project {
-	return {
-		...project,
-		rewords: project.rewords.map((r) => (r.id === rewordId ? { ...r, status: "rejected" } : r)),
-		updatedAt: Date.now(),
-	};
-}
-
-export function pendingRewords(project: Project, blockId?: string): Reword[] {
-	return project.rewords.filter(
-		(r) => r.status === "pending" && (blockId === undefined || r.blockId === blockId),
-	);
 }
