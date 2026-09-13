@@ -7,13 +7,19 @@ string. Provenance is a set of ranges over the two. There are no fragments,
 blocks, slots or sections in the model — paste a single line and you get a
 single line back, with the parts that moved highlighted inside it.
 
-**The unit is a sentence.** Notes usually arrive as one long line, so paragraphs
-would leave nothing to move and nothing to light up. Otis splits on sentences,
-and on the lines you already made units of — a bullet, a heading, a fenced block
-— never inside a decimal, a version, a method call, a code span or an
-abbreviation. Sentences that came from the same paragraph and are still next to
-each other are set back down as that paragraph, so ordinary prose reads as prose
-and a sentence that moved is the thing you can see.
+**The unit is a section of your own document.** Whatever you separated: a block
+between blank lines, a bullet, a heading, a fenced block. One section in, one
+section out — there is no paragraph model underneath and nothing is grouped back
+together afterwards, because layout is Markdown, in the text. A document typed
+as a single line has nothing separated in it, so its sentences are its sections
+instead; the splitter never cuts inside a decimal, a version, a method call, a
+code span or an abbreviation.
+
+**Your notes are read as text, not as `textContent`.** A browser answers Enter
+and a paste by building `<div>`s, and `textContent` reads those back with every
+line break gone. So line breaks go in as characters, whatever the browser builds
+anyway is read properly and flattened back with the caret where it was, and
+`check:layout` pastes for real rather than assigning `textContent`.
 
 ## The rule
 
@@ -31,6 +37,19 @@ your notes never covered. Each of those is a different colour on the page:
 
 Nothing is captioned. Colour is the only thing that says where a word came
 from, and no other part of the interface is allowed either hue.
+
+## You have your word before anything is true
+
+**Run** does not change your article. It comes back with a proposal, and the
+proposal is listed in your own text: what it wants to move, what it would
+shorten and to what, what it would leave out, what it says the piece is missing
+and why. Each of those is refused on its own — turning down the order keeps the
+shortenings and the drafts, in your order. `settle` applies what is left.
+
+The brief suggestions are built from what you pasted: the kind is scored against
+the notes themselves, the subject is your own first line, and the sentence is in
+the language you wrote in. A fixed list once offered a post-mortem to an essay
+about responsibility, which is worse than offering nothing.
 
 ## Nothing runs on its own
 
@@ -89,6 +108,12 @@ A shortening is checked before anything renders:
 - one that introduces a number, unit or identifier the original did not contain
   has invented a fact
 
+Anything written into a gap is checked too. A model asked for what is missing
+will happily paraphrase a section it liked, and the piece then makes the same
+point twice — once in your voice and once in its own. So the content words are
+counted, accents folded and short words dropped: a draft that mostly repeats
+something already in the notes is a restatement, not a gap, and never appears.
+
 A failed shortening is not rendered and then withdrawn. It never exists — the
 writer's own sentence stands, and they are not told about a suggestion that was
 never safe to make.
@@ -110,8 +135,8 @@ check. When one gives bad results you change a file.
 src/
   core/          pure TypeScript — no DOM, no fetch, no storage
     types.ts         Segment, Run, Plan, Reach, Doc
-    segments.ts      sentences and the lines you drew, located without cutting the text up
-    plan.ts          a plan plus a reach becomes runs; the only place an article is made
+    segments.ts      your own sections, located without cutting the text up
+    plan.ts          a plan plus a reach becomes runs; also read/settle, for the proposal
     markdown.ts      just enough: bold, italic, code, headings, list items
     reword.ts        the faithfulness gate, and what counts as formatting
     diff.ts          word diff, sequence and bag retention
@@ -120,7 +145,7 @@ src/
     llm/             Claude from the browser, and the planner
     patterns/        the bundled reference notes
     store/           IndexedDB
-  ui/            Solid: Notes, Threads, Article, Capsule, About
+  ui/            Solid: Notes, Threads, Article, Review, Capsule, About
   pages/         Astro shell
 patterns/        the reference notes themselves
 fixtures/        a fixed pile of notes to run changes against
@@ -141,9 +166,10 @@ bun run build
 `check:layout` exists because a pane whose chrome has slid off the bottom looks
 fine in a screenshot of the top of the page — which is how a button once shipped
 unreachable. It asserts what a screenshot cannot: no pane taller than the
-window, overflow scrolling inside the pane, the capsule reachable, every segment
-arriving in the article, the notes still one text node, and hovering lighting
-exactly one run and one thread. Set `OTIS_CHROMIUM` to skip `playwright install`
+window, overflow scrolling inside the pane, the capsule reachable, a pasted
+document keeping every line break, every section arriving in the article, the
+notes still one text node, and hovering lighting exactly one run and one thread.
+Set `OTIS_CHROMIUM` to skip `playwright install`
 if you already have a chromium.
 
 Your key and your notes stay in the browser: the key in `localStorage`, the
