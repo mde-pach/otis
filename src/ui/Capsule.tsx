@@ -36,7 +36,6 @@ export function Capsule() {
 	/** What the one button is for, right now. */
 	const label = () => {
 		if (state.busy()) return "reading…";
-		if (state.doc.review) return "reading it";
 		if (dropped_plan()) return "run";
 		if (isStale()) return "run again";
 		return state.doc.plan ? "run again" : "run";
