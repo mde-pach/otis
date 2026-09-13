@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { build, share, toMarkdown } from "../plan";
+import { build, fits, share, stale, toMarkdown } from "../plan";
 import type { Plan } from "../types";
 
 const NOTES = `The cache was doing exactly what we asked it to do.
@@ -9,6 +9,7 @@ p99 went from 180ms to 410ms in the week after we shipped it.
 Nobody experiences the average.`;
 
 const plan: Plan = {
+	basis: NOTES,
 	at: [2, 0, 1],
 	format: { 1: "**p99 went from 180ms to 410ms** in the week after we shipped it." },
 	short: {},
@@ -93,6 +94,53 @@ describe("share", () => {
 		expect(split.written).toBeGreaterThan(0);
 		expect(split.yours).toBeGreaterThan(split.written);
 		expect(split.yours + split.reworded + split.written).toBeGreaterThan(98);
+	});
+});
+
+describe("a plan belongs to the text it was made for", () => {
+	const OTHER = `Redis was healthy the entire time.
+
+When the key expired, every in-flight request missed at once.
+
+A miss under load costs more than no cache at all.
+
+The fix was single-flight.`;
+
+	test("applied to a different document it is set aside, not partly applied", () => {
+		const { runs, dropped } = build(OTHER, plan, 3);
+		expect(fits(OTHER, plan)).toBe(false);
+		// every segment arrives, and none of them vanish into "not used"
+		expect(runs).toHaveLength(4);
+		expect(dropped).toHaveLength(0);
+		expect(runs.every((r) => r.kind === "kept")).toBe(true);
+	});
+
+	test("the article is then your text in your order, not a reordering of someone else's", () => {
+		const { runs } = build(OTHER, plan, 3);
+		expect(runs[0]?.md).toBe("Redis was healthy the entire time.");
+		expect(runs.at(-1)?.md).toBe("The fix was single-flight.");
+	});
+
+	test("editing a word keeps the plan but marks it behind", () => {
+		const edited = NOTES.replace("exactly", "precisely");
+		expect(fits(edited, plan)).toBe(true);
+		expect(stale(edited, plan)).toBe(true);
+		expect(stale(NOTES, plan)).toBe(false);
+	});
+});
+
+describe("run keys", () => {
+	test("a run keeps its key across reach settings, so an edit survives the dial", () => {
+		const two = build(NOTES, plan, 2).runs.find((r) => r.fromIndex === 0);
+		const three = build(NOTES, plan, 3).runs.find((r) => r.fromIndex === 0);
+		expect(two?.key).toBe("s0");
+		expect(three?.key).toBe(two?.key);
+		expect(two?.id).not.toBe(three?.id);
+	});
+
+	test("what the tool wrote is keyed by its position in the plan, not in the article", () => {
+		const written = build(NOTES, plan, 3).runs.filter((r) => r.kind === "written");
+		expect(written.map((r) => r.key)).toEqual(["w0"]);
 	});
 });
 

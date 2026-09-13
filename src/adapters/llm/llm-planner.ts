@@ -34,7 +34,7 @@ Rules you must not break:
 
 Reply with JSON only.`;
 
-function clean(value: unknown, segments: Segment[]): Plan {
+function clean(value: unknown, segments: Segment[], basis: string): Plan {
 	const raw = (value ?? {}) as Partial<Plan>;
 	const size = segments.length;
 
@@ -81,31 +81,27 @@ function clean(value: unknown, segments: Segment[]): Plan {
 		})
 		.filter((item) => item.md.length > 0 && segments[item.after] !== undefined);
 
-	return { at, format, short, written, because: String(raw.because ?? "").trim() };
+	return { basis, at, format, short, written, because: String(raw.because ?? "").trim() };
 }
 
 export function createLlmPlanner(config: LlmConfig): Planner {
 	return {
 		async plan(request: PlanRequest): Promise<Plan> {
-			const { segments, brief, pattern, reach } = request;
+			const { segments, brief, pattern, notes } = request;
 			if (segments.length === 0) {
-				return { at: [], format: {}, short: {}, written: [], because: "" };
+				return { basis: notes, at: [], format: {}, short: {}, written: [], because: "" };
 			}
 
 			const listing = segments.map((s) => `${s.index}: ${s.text.replace(/\s+/g, " ")}`).join("\n");
 
-			const licence =
-				reach >= 3
-					? "You may reorder, shorten and write what is missing."
-					: reach === 2
-						? 'You may reorder and shorten. Return an empty "written" array — you may not write anything.'
-						: 'Keep their order exactly: "at" must be 0,1,2,… in sequence. You may shorten. Return an empty "written" array.';
-
+			// Always the whole plan, whatever the dial says. The writer's reach
+			// filters it at render time, so moving the dial costs nothing and they
+			// can see all four readings of one request.
 			return askJson<Plan>(config, {
 				system: SYSTEM,
-				user: `What they are making:\n${brief || "(they have not said — keep close to what they wrote)"}\n\nReference note for this kind of writing:\n${pattern}\n\nHow far you may go:\n${licence}\n\nTheir segments:\n${listing}`,
+				user: `What they are making:\n${brief || "(they have not said — keep close to what they wrote)"}\n\nReference note for this kind of writing:\n${pattern}\n\nTheir segments:\n${listing}`,
 				maxTokens: 3000,
-				validate: (value) => clean(value, segments),
+				validate: (value) => clean(value, segments, notes),
 			});
 		},
 	};
