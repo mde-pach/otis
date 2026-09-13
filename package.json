@@ -9,7 +9,8 @@
 		"test": "bun test",
 		"lint": "biome check .",
 		"format": "biome check --write .",
-		"check:layout": "node scripts/layout-check.mjs"
+		"check:layout": "node scripts/layout-check.mjs",
+		"evaluate": "bun run scripts/evaluate.ts"
 	},
 	"dependencies": {
 		"@astrojs/solid-js": "^7.0.2",

@@ -62,6 +62,19 @@ function extractJson(text: string): unknown {
 }
 
 /**
+ * One call, one JSON object, no validation. For callers that judge the answer
+ * themselves — a placement is checked against the pattern, and what is wrong
+ * with it is what goes back in the re-ask.
+ */
+export async function askOnce(
+	config: LlmConfig,
+	options: { system: string; user: string; maxTokens?: number },
+): Promise<unknown> {
+	const text = await call(config, options.system, options.user, options.maxTokens ?? 2000);
+	return extractJson(text);
+}
+
+/**
  * One repair attempt, then give up. A model that cannot produce the shape twice
  * is not going to on the third try, and silence beats a mangled suggestion.
  */

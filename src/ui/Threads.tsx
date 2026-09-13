@@ -1,6 +1,6 @@
 import { createEffect, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { diffWords, type Run } from "../core";
-import { dropped, runs, sourceOf } from "./state";
+import { dropped, holes, runs, sourceOf } from "./state";
 
 /**
  * The gutter, and the curves in it.
@@ -14,10 +14,16 @@ import { dropped, runs, sourceOf } from "./state";
  * here, on its own thread, between the two texts. It belongs to neither: your
  * notes are your notes and the article is the article, and nothing about what
  * happened between them is ever written into either one.
+ *
+ * The questions sit here for the same reason. A part of this kind of piece that
+ * none of your sections went into is a question out of the pattern file, shown
+ * where the missing part would go — never dropped into the article as a note to
+ * yourself, and never written for you.
  */
 export function Threads(props: { lit: number | null }) {
 	let svg: SVGSVGElement | undefined;
 	const [card, setCard] = createSignal<number | null>(null);
+	const [asks, setAsks] = createSignal<{ top: number; part: string; asks: string }[]>([]);
 
 	/** the lit run, when it is one there is something to say about */
 	const changed = () => runs().find((r) => r.id === props.lit && r.kind === "reworded") ?? null;
@@ -67,6 +73,27 @@ export function Threads(props: { lit: number | null }) {
 			);
 		}
 
+		// a required part with nothing in it, shown after the section it would follow
+		const placed = runs();
+		setAsks(
+			holes().flatMap((gap) => {
+				const anchor =
+					gap.after === null
+						? placed[0]
+						: (placed.find((r) => r.fromIndex === gap.after) ?? placed[placed.length - 1]);
+				const node = anchor
+					? document.querySelector<HTMLElement>(`[data-run="${anchor.id}"]`)
+					: null;
+				const rect = node?.getBoundingClientRect();
+				if (!rect) return [];
+				const y = rect.bottom - gutter.top - 10;
+				// a question for a section scrolled out of sight is not shown at the
+				// edge of the gutter — it belongs beside the part it is asking about
+				if (y < 6 || y > gutter.height - 24) return [];
+				return [{ top: y, part: gap.part, asks: gap.asks }];
+			}),
+		);
+
 		svg.innerHTML = parts.join("");
 		setCard(open);
 	};
@@ -90,6 +117,7 @@ export function Threads(props: { lit: number | null }) {
 	createEffect(() => {
 		void runs();
 		void dropped();
+		void holes();
 		void props.lit;
 		schedule();
 	});
@@ -97,6 +125,14 @@ export function Threads(props: { lit: number | null }) {
 	return (
 		<div class="gutter">
 			<svg ref={svg} aria-hidden="true" />
+			<For each={asks()}>
+				{(gap) => (
+					<div class="ask" style={{ top: `${gap.top}px` }}>
+						<span class="p">{gap.part}</span>
+						<span class="q">{gap.asks}</span>
+					</div>
+				)}
+			</For>
 			<Show when={card() !== null && changed()}>
 				{(run) => (
 					<div class="card" style={{ top: `${card() as number}px` }}>

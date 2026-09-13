@@ -27,7 +27,6 @@ export function Article(props: {
 		"data-run": String(run.id),
 		"data-key": run.key,
 		"data-kind": run.kind,
-		...(run.confidence ? { "data-reach": run.confidence } : {}),
 		classList: { lit: props.lit === run.id },
 		onMouseEnter: () => props.onHover(run.id),
 		innerHTML: inline(stripMarker(run.md)),

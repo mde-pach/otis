@@ -1,0 +1,32 @@
+{
+	"id": "how-tls-works",
+	"kind": "how-it-works",
+	"lang": "en",
+	"note": "a complete explanation",
+	"sections": [
+		{
+			"part": "belief",
+			"text": "Most people think the padlock means the site is trustworthy. It means something much narrower: nobody in between could read or change what you sent."
+		},
+		{
+			"part": "mechanism",
+			"text": "The handshake agrees a shared secret over a channel anyone can read, using a key exchange where watching both halves tells you nothing about the result."
+		},
+		{
+			"part": "mechanism",
+			"text": "The certificate is a signature from someone your browser already trusts, saying this public key belongs to this hostname."
+		},
+		{
+			"part": "example",
+			"text": "On a café network, the router sees only the hostname you asked for and a stream of bytes it cannot read — which is why it can block a site but not rewrite a page."
+		},
+		{
+			"part": "limit",
+			"text": "None of this says anything about what the site does with your data once it arrives. The padlock is about the pipe, not the far end."
+		},
+		{
+			"part": "consequence",
+			"text": "So a phishing site with a valid certificate is perfectly normal, and a browser warning about a certificate is about identity rather than about encryption."
+		}
+	]
+}
