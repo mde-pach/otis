@@ -12,8 +12,7 @@
  * labelled section carries the part it belongs to, and most carry a `thin`
  * variant: the same section, in the same part, saying nothing — "users were
  * affected" where the real one says "22,000 sessions failed". That variant is
- * what the hollow-section measures are for, and it is the one thing this tool
- * currently cannot see.
+ * what the hollow-section measures are for.
  */
 
 import { readdirSync, readFileSync } from "node:fs";
@@ -188,28 +187,63 @@ const PAIRS: Pair[] = LABELLED.flatMap((doc) =>
 /**
  * What happens when a required part is filled by a section that says nothing.
  *
- * `gaps()` counts empty slots, and a hollow section is not an empty slot — so
- * the number this prints is zero, and it is meant to be. It is here so the
- * blindness is a measurement rather than a claim.
+ * Until the four `wants: "specifics"` declarations existed this was zero of
+ * forty-two, and the number was here so the blindness could not be mistaken for
+ * a handled case. It is still zero for every part that does not declare — a
+ * reason in an essay owes no figure and is never asked for one — so the measure
+ * is split: caught where a part declares, and openly blind everywhere else.
  */
 function hollow(): void {
-	let noticed = 0;
+	const declared = PAIRS.filter((p) => {
+		const part = patternById(p.doc.kind as string).parts.find((x) => x.id === p.part);
+		return part?.wants === "specifics";
+	});
+
+	let caught = 0;
+	const alarms: string[] = [];
+
 	for (const d of LABELLED) {
 		const pattern = patternById(d.kind);
 		const gold = goldOf(d);
-		const asIs = build(notesOf(d), planFor(d, gold), { reach: 3, pattern, lang: d.lang });
-		const gutted = build(notesOf(d, true), planFor(d, gold, true), {
-			reach: 3,
-			pattern,
-			lang: d.lang,
-		});
-		noticed += gutted.gaps.length - asIs.gaps.length;
+		const texts = d.sections.map((x) => x.text);
+		const thinTexts = d.sections.map((x) => x.thin ?? x.text);
+
+		// the real document: any "thin" question here is an alarm on writing the
+		// corpus calls complete
+		for (const g of gaps(gold, pattern, d.lang, texts).filter((x) => x.kind === "thin")) {
+			alarms.push(`${d.id} · ${g.part}`);
+		}
+		// the gutted one: every declared part whose sections went hollow should ask
+		const said = new Set(
+			gaps(gold, pattern, d.lang, thinTexts)
+				.filter((g) => g.kind === "thin")
+				.map((g) => g.part),
+		);
+		caught += declared.filter((p) => p.doc.id === d.id && said.has(p.part)).length;
 	}
-	// not a pass/fail: a limitation, stated as a number so it cannot be mistaken
-	// for something the tool handles
+
+	report(
+		"a hollow section is noticed, where the part declares it owes one",
+		caught / declared.length,
+		1,
+		`  ${declared.length} pairs`,
+	);
+	// One alarm, on note-design-review's `state`: "Starting with next week's work."
+	// The corpus calls that section complete and the check disagrees — and the
+	// check has a point, because that is not a date anyone can plan around. It is
+	// left standing rather than edited away, because rewriting the evidence after
+	// seeing the result is how a measure stops meaning anything. The floor allows
+	// one; a second would be worth looking at.
+	report(
+		"and writing the corpus calls complete is left alone",
+		1 - alarms.length / LABELLED.length,
+		0.9,
+		`  ${alarms.length} in ${LABELLED.length} documents`,
+	);
+	for (const one of alarms) note("asked anyway", one);
 	note(
-		"BLIND SPOT hollow sections noticed",
-		`${noticed} of ${PAIRS.length} — gaps() counts empty slots, and a section that says nothing is not an empty slot`,
+		"still blind",
+		`${PAIRS.length - declared.length} of ${PAIRS.length} hollow sections sit in parts that declare nothing, and are not looked at`,
 	);
 }
 
@@ -264,14 +298,15 @@ const DETECTORS: Detector[] = [
 ];
 
 /**
- * A bake-off, run on the pairs and on nothing else.
+ * The bake-off that chose the check, kept so the choice stays checkable.
  *
- * None of these is wired into the tool. The question is whether a code-side
- * check could tell a hollow section from a real one at all, and whether
- * anything beats the dumb baseline of "it is short".
+ * The question was whether a code-side test could tell a hollow section from a
+ * real one at all, and whether anything beat the dumb baseline of "it is
+ * short". `no-digit` won on the declared parts and is what `gaps()` now uses;
+ * the rest are here so a future change has something to beat.
  */
 function detectors(): void {
-	console.log("\n  candidate detectors — none of these is in the product");
+	console.log("\n  candidate detectors");
 	console.log(
 		`        ${" ".repeat(18)}${"— all parts —".padStart(23)}${"— declared parts only —".padStart(23)}`,
 	);
@@ -390,10 +425,17 @@ async function live(planner: Planner): Promise<void> {
 	let quiet = 0;
 	const falseAlarms: string[] = [];
 	for (const { d, a } of placed) {
-		const said = gaps(a.placement, patternById(d.kind), d.lang);
+		const said = gaps(
+			a.placement,
+			patternById(d.kind),
+			d.lang,
+			d.sections.map((x) => x.text),
+		);
 		if (said.length === 0) quiet++;
 		else falseAlarms.push(`${d.id}: ${said.map((g) => g.part).join(", ")}`);
 	}
+	// with the hollow check live too: the section texts go in, so a part filled by
+	// something that does not do its job counts against this number
 	report(
 		"a complete document is asked nothing",
 		quiet / placed.length,
@@ -421,7 +463,12 @@ async function live(planner: Planner): Promise<void> {
 			hollowSections++;
 			if (said.placement[i] === part) stillPlaced++;
 		});
-		asked += gaps(said.placement, patternById(d.kind), d.lang).length;
+		asked += gaps(
+			said.placement,
+			patternById(d.kind),
+			d.lang,
+			d.sections.map((x) => x.thin ?? x.text),
+		).length;
 	}
 	note(
 		"gutted document, real model",
@@ -444,7 +491,12 @@ async function live(planner: Planner): Promise<void> {
 			brief: "",
 			pattern: patternById(c.d.kind),
 		});
-		const asked = gaps(said.placement, patternById(c.d.kind), c.d.lang).map((g) => g.part);
+		const asked = gaps(
+			said.placement,
+			patternById(c.d.kind),
+			c.d.lang,
+			c.kept.map((x) => x.text),
+		).map((g) => g.part);
 		return { ...c, asked, placement: said.placement };
 	});
 
