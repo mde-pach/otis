@@ -9,7 +9,7 @@ import {
 	type Doc,
 	emptyDoc,
 	fits,
-	outline,
+	skeleton,
 	type Reach,
 	type Run,
 	reviveDoc,
@@ -68,7 +68,7 @@ export const isStale = () => stale(doc.notes, doc.plan);
  */
 export const shapes = (): Shape[] => doc.plan?.shapes ?? [];
 export const shape = () => shapeOf(doc.plan, doc.shape);
-export const outlineOf = (one: Shape) => outline(doc.notes, one);
+export const skeletonOf = (one: Shape) => skeleton(doc.notes, one);
 export async function setShape(which: number) {
 	setDoc({ shape: which, edits: {} });
 	await keep();

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { bars, build, fits, outline, share, stale, toMarkdown } from "../plan";
+import { build, fits, share, skeleton, stale, toMarkdown } from "../plan";
 import type { Plan } from "../types";
 
 const NOTES = `The cache was doing exactly what we asked it to do.
@@ -213,37 +213,36 @@ describe("the shapes a run comes back with", () => {
 	test("asking for a shape that is not there lands on the nearest one", () => {
 		expect(build(NOTES, two, 2, 9).runs.map((r) => r.fromIndex)).toEqual([0, 2]);
 	});
+});
 
-	test("an outline is your own words, in that shape's order", () => {
-		expect(outline(NOTES, two.shapes[0] as never)).toEqual([
-			"p99 went from 180ms to…",
-			"Nobody experiences the average.",
-			"The cache was doing exactly…",
+describe("what an arrangement tells you before you pick it", () => {
+	const notes = "First one.\n\nSecond one.\n\nThird one.\n\nFourth one.";
+	const led = { name: "", at: [2, 0, 1, 3], because: "" };
+
+	test("it is your own sections, in its order, not a picture of one", () => {
+		expect(skeleton(notes, led).order.map((l) => l.text)).toEqual([
+			"Second one.",
+			"Third one.",
+			"First one.",
+			"Fourth one.",
 		]);
 	});
 
-	test("a shape that leaves a section out leaves it out of the outline too", () => {
-		expect(outline(NOTES, two.shapes[2] as never)).toHaveLength(2);
-	});
-});
-
-describe("an arrangement drawn as bars", () => {
-	const notes = "aaaa aaaa\n\nbb\n\ncccccc cccccc cccccc";
-
-	test("a section keeps its width wherever the arrangement puts it", () => {
-		const asIs = bars(notes, { name: "", at: [0, 1, 2], because: "" });
-		const moved = bars(notes, { name: "", at: [2, 1, 0], because: "" });
-		expect(moved).toEqual([...asIs].reverse());
+	test("each one says where it sits in your notes, so a move is visible", () => {
+		expect(skeleton(notes, led).order.map((l) => l.n)).toEqual([2, 3, 1, 4]);
 	});
 
-	test("the longest section is the full width, the shortest is still visible", () => {
-		const widths = bars(notes, { name: "", at: [0, 1, 2], because: "" });
-		expect(widths.at(-1)).toBe(1);
-		expect(widths[1]).toBeGreaterThan(0.1);
-		expect(widths[1]).toBeLessThan(widths[0] as number);
+	test("what it would leave out is said, not silently missing", () => {
+		const cut = skeleton(notes, { name: "", at: [0, null, 1, null], because: "" });
+		expect(cut.order.map((l) => l.n)).toEqual([1, 3]);
+		expect(cut.out.map((l) => l.n)).toEqual([2, 4]);
+		expect(cut.out.map((l) => l.text)).toEqual(["Second one.", "Fourth one."]);
 	});
 
-	test("a section it leaves out has no bar", () => {
-		expect(bars(notes, { name: "", at: [0, null, 1], because: "" })).toHaveLength(2);
+	test("a section too long to show is opened, never invented", () => {
+		const long = "The cache was doing exactly what we asked it to do, which was the problem.";
+		const one = skeleton(long, { name: "", at: [0], because: "" }).order[0];
+		expect(long.startsWith((one?.text ?? "").replace("…", ""))).toBe(true);
+		expect(one?.text.endsWith("…")).toBe(true);
 	});
 });
