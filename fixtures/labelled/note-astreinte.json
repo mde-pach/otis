@@ -1,0 +1,27 @@
+{
+	"id": "note-astreinte",
+	"kind": "internal-note",
+	"lang": "fr",
+	"note": "note interne complète, en français",
+	"sections": [
+		{
+			"part": "change",
+			"text": "L'astreinte passe de trois personnes à deux, et la rotation devient hebdomadaire au lieu de mensuelle.",
+			"thin": "On change un peu l'organisation de l'astreinte."
+		},
+		{
+			"part": "state",
+			"text": "En vigueur à partir du lundi 6 octobre. Le planning des six prochaines semaines est déjà publié.",
+			"thin": "La mise en application de ces nouvelles dispositions interviendra dans un délai relativement court et les personnes concernées seront tenues informées en temps utile des modalités pratiques, afin que chacun puisse s'organiser dans de bonnes conditions."
+		},
+		{
+			"part": "action",
+			"text": "Vérifiez vos semaines dans le planning avant vendredi et signalez les conflits maintenant, pas la veille.",
+			"thin": "Merci de prendre connaissance des nouvelles modalités."
+		},
+		{
+			"part": "why",
+			"text": "Une rotation mensuelle veut dire qu'on oublie tout entre deux tours. Les deux dernières escalades ont mis plus d'une heure à trouver la bonne personne."
+		}
+	]
+}

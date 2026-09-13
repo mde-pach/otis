@@ -4,8 +4,8 @@ A tool for turning a pile of notes into an article you would actually publish.
 
 **Text in, text out.** Your notes are one string. The article is one Markdown
 string. Provenance is a set of ranges over the two. There are no fragments,
-blocks, slots or sections in the model — paste a single line and you get a
-single line back, with the parts that moved highlighted inside it.
+blocks or slots in the model — paste a single line and you get a single line
+back, with the parts that moved highlighted inside it.
 
 **The unit is a section of your own document.** Whatever you separated: a block
 between blank lines, a bullet, a heading, a fenced block. One section in, one
@@ -23,160 +23,187 @@ anyway is read properly and flattened back with the caret where it was, and
 
 ## The rule
 
-Your text is the source of truth. Otis moves your sentences into an order that
-reads, shortens the ones that run long, and — when you let it — writes the parts
-your notes never covered. Each of those is a different colour on the page:
+Your text is the source of truth. Otis puts your sections in the order a kind of
+piece puts them, shortens the ones that run long by deleting words, and tells
+you which parts of that kind your notes do not cover. **It does not write those
+parts.** It asks you about them, in the gutter, and the question comes out of a
+file you can open and edit.
 
 | | |
 |---|---|
 | plain | your words, exactly as you wrote them |
-| cyan | your sentence, shortened — no number or claim changed |
-| amber | written by Otis; edit it and it becomes yours |
-| louder amber | written, and further from what your notes support |
+| cyan | your sentence, shortened — every word still one of yours |
+| amber, in the gutter | a part of this kind of piece nothing was placed in |
+| cyan, in the gutter | a part something *was* placed in that does not do its job |
 | dimmed, on the left | something you wrote that the article is not using |
 
-Nothing is captioned. Colour is the only thing that says where a word came
-from, and no other part of the interface is allowed either hue.
+Nothing is captioned, and nothing is ever written into the article to explain
+the article.
 
-## Shapes
+## A pattern is data the program runs
 
-A run comes back with **two or three arrangements**, not one, and applies the
-first. "Which shape should this take" is the writer's question, and a model
-guessing at it once is worse than offering the ones it can actually make. They
-all arrived in the same request, so the strip above the article moves between
-them for nothing.
+A pattern used to be a note handed to the model with the request to respect it.
+That is not a rule — it is a rule whose target is also its enforcer, and it
+holds right up until the run where it does not, with nothing in the system able
+to tell the difference.
 
-Each is laid out by `skeleton()`: what it leads with, why it is in that order,
-and the piece it would make — every section by its opening words, carrying the
-place it holds in the notes so a move is visible as well as readable, and the
-ones it would leave out named rather than silently missing. A picture of an
-order was tried and thrown out: the length of a section is not something anyone
-is choosing between. Nothing asks you to approve a reword or a move — the run
-applies, and the dial and the strip are how you read it afterwards.
+So a `Pattern` is a list of parts, and the program does the work:
 
-## What it did, in the gutter
+```ts
+interface Part {
+  id: string;
+  does: string;              // one line, and all the model is ever told about it
+  required: boolean;
+  many: boolean;             // whether several of your sections may sit here
+  asks: { en: string; fr: string };   // printed when the slot comes up empty
+  wants?: "specifics";       // declared on a part that owes a checkable figure
+  thin?: { en: string; fr: string };  // printed when it is filled but delivers nothing
+}
+```
+
+`asks` and `thin` are **never sent to the model**. They are strings the program
+prints, so a gap is a question out of a file rather than a sentence generated
+about your document.
+
+## What the model is asked for
+
+Two questions, and neither is "write" or "arrange".
+
+**pick** — which kinds of piece could these notes become. It sees one line per
+kind on the shelf and answers with ids and a sentence each.
+
+**place** — for one kind, which part each of your sections belongs to. A closed
+question with a vocabulary the size of the pattern file:
+
+```ts
+{ "at": { "0": "observed", "1": "cost", "2": "cause", "3": null } }
+```
+
+Then code takes over, and this is the whole of the argument:
+
+| | |
+|---|---|
+| `check()` | judges the answer: every section answered once, every value a known part, no single-slot part holding two. One re-ask naming the violations, then your own order. |
+| `arrange()` | computes the order from the pattern's part order, and inside a part from yours. The model has no field in which to express a sequence, so the same placement is the same article by construction. |
+| `gaps()` | counts required parts with nothing in them, and — for parts that declare `wants` — parts filled by a section carrying no figure. Prints the file's own string. |
+
+There is no field in the reply that the model's own prose could arrive in.
+
+## The card
+
+A card is a pattern: one kind, one arrangement, one card. What it shows comes out
+of the pattern file and nowhere else — the name, what that kind of piece does,
+and its parts in the order it puts them, dashed where optional. **It reads the
+same on every document**, because you are choosing a shape rather than looking at
+a small copy of the result. The one line about your notes is why that kind was
+picked. Choosing another card organises it, once, and keeps what comes back.
+
+## The spine, and the questions
+
+Down the gutter runs the spine: the part each of your sections is serving,
+marked where that part begins. It is there because of a measurement — the tool
+is not always right when it says a part is *missing*, because a neighbouring
+section slides into the hole, but it is never wrong about what is *filling* one.
+So it shows you that, and you catch a cost paragraph standing in for the opening
+yourself.
 
 Hover a shortened section and the word diff opens on that section's own thread,
 between the two texts. It belongs to neither: `check:layout` asserts nothing of
-the kind is ever inside `.md`, and nothing is ever written into the notes. The
-gutter is hidden below 880px, and the card goes with it.
+the kind is ever inside `.md`. The gutter is hidden below 880px.
 
 `copy markdown` in the article's header puts `toMarkdown()` on the clipboard.
 
-The brief suggestions are built from what you pasted: the kind is scored against
-the notes themselves, the subject is your own first line, and the sentence is in
-the language you wrote in. A fixed list once offered a post-mortem to an essay
-about responsibility, which is worse than offering nothing.
-
 ## Nothing runs on its own
 
-Typing, moving the dial and rewriting the brief are all free. Only **run**
-spends a request, and one request answers all four reach settings — the dial is
-a render-time filter over the plan already in hand, so reading your text four
-ways costs one call.
+Typing, moving the dial and rewriting the brief are all free. Only **run** spends
+a request.
 
-A plan is stamped with the notes it was made for. Applied to a different
-document it would be a map with no entry for most of what you just pasted, so
-`build` sets it aside entirely and shows your text in your order rather than
-silently dropping the parts it cannot place. Edit a word and the plan still
-fits but is marked behind: the button reads *run again*.
+A plan is stamped with the notes it was made for. Applied to a different document
+it would be a map with no entry for most of what you just pasted, so `build` sets
+it aside entirely rather than silently dropping what it cannot place. Edit a word
+and the plan still fits but is marked behind: the button reads *run again*.
 
-What comes out of storage is revived rather than trusted — it was written by
-whatever version the writer last had open. A plan from before arrangements
-existed is carried forward into one; anything unreadable is dropped and the
-notes stay, because losing the writer's text is the one thing this cannot do.
+What comes out of storage is revived rather than trusted. A plan from before a
+pattern was a list of parts is dropped rather than reinterpreted into an order
+nobody chose — the notes stay, because losing the writer's text is the one thing
+this cannot do.
 
 ## Reach
 
-One dial, four settings, from the writer's side rather than the model's:
-
 - **as written** — your text, your order. Nothing is touched, and no key is needed.
-- **tidy** — shortens sentences that run long. Keeps your order, writes nothing.
-- **reorder** — moves things, and drops what does not earn its place.
-- **rebuild** — all of the above, and writes what is missing.
+- **tidy** — shortens sentences that run long. Keeps your order.
+- **reorder** — puts your sections in the order this kind of piece puts them.
+- **and ask** — and names the parts your notes do not cover. It never fills one.
 
 The same plan renders four ways. The lower settings do not ask for less; they
 refuse to use parts of what came back.
 
-## What the model is asked for
-
-Never an article. It is given the writer's segments, what they said they are
-making, and a short reference note, and it answers in **indices**:
-
-```ts
-interface Shape {
-  name: string;                           // three or four words for the arrangement
-  at: (number | null)[];                  // where each of your segments goes in it, or null
-  because: string;
-}
-
-interface Plan {
-  basis: string;                          // the notes it was made for
-  shapes: Shape[];                        // the arrangements on offer
-  format: Record<number, string>;         // same words, markdown added
-  short: Record<number, string>;          // fewer words, same claims
-  written: { after: number; md: string; confidence: "high" | "low" }[];
-}
-```
-
-There is no way to express "put a heading here" or "make a section". The only
-text it may contribute arrives in `written`, and that is marked for as long as
-it survives.
-
-Nothing it returns is trusted. Every index is resolved against the segments,
-duplicates dropped, a `format` entry that changed a word is discarded as a lie,
-and a `short` that fails the faithfulness gate never reaches the page.
-
 ## The gate
 
-A shortening is checked before anything renders:
+A shortening may **only delete**. Every word in it has to be a word your sentence
+already contains, so a clause that reads well and was never yours cannot survive,
+and neither can a number or unit your notes do not have.
 
-- one that keeps almost none of the original's words is a rewrite, not a shortening
-- one that introduces a number, unit or identifier the original did not contain
-  has invented a fact
-
-Anything written into a gap is checked too. A model asked for what is missing
-will happily paraphrase a section it liked, and the piece then makes the same
-point twice — once in your voice and once in its own. So the content words are
-counted, accents folded and short words dropped: a draft that mostly repeats
-something already in the notes is a restatement, not a gap, and never appears.
-
-A failed shortening is not rendered and then withdrawn. It never exists — the
-writer's own sentence stands, and they are not told about a suggestion that was
-never safe to make.
+The rule is that strict because a gate that only checks for invented *facts*
+lets `"If you enqueue jobs, drop the priority argument."` become `"If you
+enqueue jobs, drop the and it cost us the quarter"` — every word accounted for,
+no number introduced, and a sentence you never wrote.
 
 **Formatting is not rewriting.** Comparison happens on plain text, so Otis may
 bold a figure, make a list or add a heading and the words stay marked as yours.
 
+## The evaluation
+
+```sh
+bun run evaluate                              # offline, free, no network
+ANTHROPIC_API_KEY=… bun run evaluate --live   # about a hundred requests
+```
+
+`fixtures/labelled/` is fifteen documents written for this: twelve complete ones
+across four kinds in two languages, three that sit between kinds, every section
+labelled with the part it belongs to. Forty-two sections also carry a `thin`
+twin — the same section, in the same part, saying nothing. Sixteen of the twins
+are *longer* than the real version, so "it is short" cannot win for free.
+
+Offline it measures that the same answer is the same article, that nothing the
+model adds reaches the article, that a malformed answer is caught, and what the
+hollow-section check catches and costs. Live it measures pick precision,
+placement agreement against the labels, whether a complete document is left
+alone, and gap recall.
+
+Floors are set below measured values so they catch a regression rather than a
+bad day, and the misses are printed rather than summarised. A `candidate
+detectors` table records the bake-off that chose the hollow check, so the choice
+stays checkable.
+
 ## Patterns
 
-`patterns/*.md` — a few dozen words each on how a post-mortem, an internal note,
-an explanation or an essay tends to move. They are the whole of the context Otis
-reads about a kind of writing: versioned with the code, editable, and picked
-from the brief by word rather than by a model, so the choice is one you can
-check. When one gives bad results you change a file.
+`patterns/*.ts` — four kinds of piece as typed data, versioned with the code and
+editable. When one gives bad results you change a list of parts rather than
+guess at a prompt.
 
 ## Layout
 
 ```
 src/
   core/          pure TypeScript — no DOM, no fetch, no storage
-    types.ts         Segment, Run, Shape, Plan, Reach, Doc, and reviveDoc
+    pattern.ts       Part, Pattern, Placement, check, arrange, gaps
+    types.ts         Segment, Run, Shape, Plan, Reach, Doc, reviveDoc
     segments.ts      your own sections, located without cutting the text up
-    plan.ts          a plan, a reach and a shape become runs; the only place an article is made
+    plan.ts          a plan, a reach and a pattern become runs; the only place an article is made
     markdown.ts      just enough: bold, italic, code, headings, list items
     reword.ts        the faithfulness gate, and what counts as formatting
     diff.ts          word diff, sequence and bag retention
-    ports.ts         Planner / DocStore
+    ports.ts         Planner (pick / place) and DocStore
   adapters/
-    llm/             Claude from the browser, and the planner
-    patterns/        the bundled reference notes
+    llm/             Claude from the browser, and the two questions
+    patterns/        the shelf
     store/           IndexedDB
   ui/            Solid: Notes, Threads, Article, Shapes, Capsule, About
   pages/         Astro shell
-patterns/        the reference notes themselves
-fixtures/        a fixed pile of notes to run changes against
-scripts/         the layout check
+patterns/        the kinds of piece themselves
+fixtures/        a pile of notes to run changes against, and the labelled corpus
+scripts/         the layout check and the evaluation
 ```
 
 ## Commands
@@ -187,6 +214,7 @@ bun run dev            # http://localhost:4321/otis/
 bun test               # the core, no browser needed
 bun run lint           # biome
 bun run check:layout   # the panes, in a real browser, at five window sizes
+bun run evaluate       # the offline measures
 bun run build
 ```
 
@@ -195,22 +223,27 @@ fine in a screenshot of the top of the page — which is how a button once shipp
 unreachable. It asserts what a screenshot cannot: no pane taller than the
 window, overflow scrolling inside the pane, the capsule reachable, a pasted
 document keeping every line break, every section arriving in the article, the
-notes still one text node, hovering lighting exactly one run and one thread, and
-— with arrangements on offer — every one of them saying what it is, why, and the
-piece it would make, without the strip pushing a pane off the window. Set
-`OTIS_CHROMIUM` to skip `playwright install` if you already have a chromium.
+notes still one text node, hovering lighting exactly one run and one thread, the
+cards describing their kind and saying nothing about your document, the spine
+naming the parts, and a missing part and a hollow one told apart — without the
+strip pushing a pane off the window. Set `OTIS_CHROMIUM` to skip
+`playwright install` if you already have a chromium.
 
 Your key and your notes stay in the browser: the key in `localStorage`, the
 document in IndexedDB. Nothing is sent anywhere but the model endpoint you
 configured.
 
 Deploys to GitHub Pages on push to `main` (`.github/workflows/deploy.yml`).
+Nothing runs on a pull request, so a branch is only as verified as whoever ran
+the commands on it.
 
 ## Next
 
-- **Confidence from the model rather than a label** — `written` runs carry a
-  `confidence` today because the planner is asked for one. Grounding it in
-  something measurable would be better.
+- **The rest of the shelf.** Four kinds is thin, and it is the likeliest reason
+  the picker returns two cards rather than three: it is told to give three and
+  told not to pad, and with four kinds the second instruction wins.
+- **`wants` beyond four parts.** Most of the corpus's hollow twins sit in parts
+  that declare nothing and are never looked at.
 - **Numbers guard** — every figure in the output checked against the notes, and
   an unmatched one flagged rather than styled.
 - **The file as the source of truth** — File System Access API, one `.otis.md`

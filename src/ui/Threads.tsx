@@ -1,6 +1,6 @@
 import { createEffect, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { diffWords, type Run } from "../core";
-import { dropped, runs, sourceOf } from "./state";
+import { dropped, holes, runs, sourceOf } from "./state";
 
 /**
  * The gutter, and the curves in it.
@@ -14,10 +14,25 @@ import { dropped, runs, sourceOf } from "./state";
  * here, on its own thread, between the two texts. It belongs to neither: your
  * notes are your notes and the article is the article, and nothing about what
  * happened between them is ever written into either one.
+ *
+ * The questions sit here for the same reason. A part of this kind of piece your
+ * sections do not cover is a question out of the pattern file, shown where the
+ * part would go — never dropped into the article as a note to yourself, and
+ * never written for you.
+ *
+ * And down the left edge, the spine: each part of the chosen kind, at the first
+ * section serving it. The tool is not always right when it says a part is
+ * missing, because a neighbouring section slides into the hole; it is never
+ * wrong about what is filling a part. So it shows you that, and you can see for
+ * yourself that your cost paragraph is standing in for the opening.
  */
 export function Threads(props: { lit: number | null }) {
 	let svg: SVGSVGElement | undefined;
 	const [card, setCard] = createSignal<number | null>(null);
+	const [asks, setAsks] = createSignal<
+		{ top: number; part: string; asks: string; kind: "missing" | "thin" }[]
+	>([]);
+	const [spine, setSpine] = createSignal<{ top: number; part: string }[]>([]);
 
 	/** the lit run, when it is one there is something to say about */
 	const changed = () => runs().find((r) => r.id === props.lit && r.kind === "reworded") ?? null;
@@ -67,6 +82,44 @@ export function Threads(props: { lit: number | null }) {
 			);
 		}
 
+		// the spine of the piece as it actually stands: each part, at the first
+		// section serving it. This is the one thing the tool always knows for
+		// certain, and it is what lets you catch a section filling the wrong slot.
+		const placed = runs();
+		const seen = new Set<string>();
+		const marks: { top: number; part: string }[] = [];
+		for (const one of placed) {
+			if (!one.part || seen.has(one.part)) continue;
+			seen.add(one.part);
+			const node = document.querySelector<HTMLElement>(`[data-run="${one.id}"]`);
+			const rect = node?.getBoundingClientRect();
+			if (!rect) continue;
+			const y = rect.top - gutter.top + 1;
+			if (y < 2 || y > gutter.height - 10) continue;
+			marks.push({ top: y, part: one.part });
+		}
+		setSpine(marks);
+
+		// a part with nothing in it, or nothing that does its job
+		setAsks(
+			holes().flatMap((gap) => {
+				const anchor =
+					gap.after === null
+						? placed[0]
+						: (placed.find((r) => r.fromIndex === gap.after) ?? placed[placed.length - 1]);
+				const node = anchor
+					? document.querySelector<HTMLElement>(`[data-run="${anchor.id}"]`)
+					: null;
+				const rect = node?.getBoundingClientRect();
+				if (!rect) return [];
+				const y = rect.bottom - gutter.top - 10;
+				// a question for a section scrolled out of sight is not shown at the
+				// edge of the gutter — it belongs beside the part it is asking about
+				if (y < 6 || y > gutter.height - 24) return [];
+				return [{ top: y, part: gap.part, asks: gap.asks, kind: gap.kind }];
+			}),
+		);
+
 		svg.innerHTML = parts.join("");
 		setCard(open);
 	};
@@ -90,6 +143,7 @@ export function Threads(props: { lit: number | null }) {
 	createEffect(() => {
 		void runs();
 		void dropped();
+		void holes();
 		void props.lit;
 		schedule();
 	});
@@ -97,6 +151,21 @@ export function Threads(props: { lit: number | null }) {
 	return (
 		<div class="gutter">
 			<svg ref={svg} aria-hidden="true" />
+			<For each={spine()}>
+				{(mark) => (
+					<span class="slot" style={{ top: `${mark.top}px` }}>
+						{mark.part}
+					</span>
+				)}
+			</For>
+			<For each={asks()}>
+				{(gap) => (
+					<div class="ask" data-kind={gap.kind} style={{ top: `${gap.top}px` }}>
+						<span class="p">{gap.part}</span>
+						<span class="q">{gap.asks}</span>
+					</div>
+				)}
+			</For>
 			<Show when={card() !== null && changed()}>
 				{(run) => (
 					<div class="card" style={{ top: `${card() as number}px` }}>

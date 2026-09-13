@@ -1,0 +1,30 @@
+{
+	"id": "note-design-review",
+	"kind": "internal-note",
+	"lang": "en",
+	"note": "a process change rather than a technical one",
+	"sections": [
+		{
+			"part": "change",
+			"text": "Design review moves from a standing Thursday meeting to an async thread. Anything that changes a screen gets a thread with screenshots before it merges."
+		},
+		{
+			"part": "state",
+			"text": "Starting with next week's work. The Thursday slot is already off everyone's calendar.",
+			"thin": "This starts soon."
+		},
+		{
+			"part": "action",
+			"text": "Open the thread when you open the PR, not after review — the point is to catch layout arguments before anyone has written the CSS.",
+			"thin": "Everyone is kindly asked to familiarise themselves with these new arrangements and to apply them in their day-to-day work, bearing in mind the general objective of improving both the quality of what we ship and the smoothness of how we work together as a team."
+		},
+		{
+			"part": "action",
+			"text": "If nobody has replied in two working days, merge. Silence is approval and we will not be chasing."
+		},
+		{
+			"part": "why",
+			"text": "Two thirds of the meeting was four people watching two people disagree, and the disagreement was usually about work that had already shipped."
+		}
+	]
+}

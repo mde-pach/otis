@@ -1,0 +1,40 @@
+{
+	"id": "pm-cert-expiry",
+	"kind": "post-mortem",
+	"lang": "en",
+	"note": "complete post-mortem, invented incident, realistic mechanism",
+	"sections": [
+		{
+			"part": "observed",
+			"text": "At 06:41 UTC on 4 March the mobile apps started failing every request to api.example.com with a TLS handshake error. The web client was unaffected because it goes through the CDN.",
+			"thin": "One morning in March the mobile apps stopped working properly for a while."
+		},
+		{
+			"part": "cost",
+			"text": "Mobile was down for 94 minutes. About 22,000 sessions failed outright, roughly 140 orders were abandoned mid-checkout, and support took 61 tickets before we posted a status page.",
+			"thin": "There was a meaningful impact on a number of our users over the course of the incident, across both the ordering and the browsing flows, and the support team saw a noticeable increase in contact volume during the period as people got in touch about the various problems they were running into."
+		},
+		{
+			"part": "cause",
+			"text": "The intermediate certificate on the origin load balancer expired at 06:40 UTC. Renewal was automated in 2023 but the automation only ever covered the leaf, and the intermediate was pinned by hand when we moved to a new CA."
+		},
+		{
+			"part": "cause",
+			"text": "The CDN keeps its own copy of the chain and had not revalidated it since the previous evening, which is why the web client kept working and hid the blast radius from us for the first half hour."
+		},
+		{
+			"part": "hidden",
+			"text": "Our synthetic checks all run through the CDN, so nothing in monitoring ever performs a handshake against the origin. Certificate expiry alerting existed and was watching the leaf, which had 47 days left.",
+			"thin": "Unfortunately this was not something that our existing monitoring and alerting setup was in a good position to surface to us in a timely way, for a combination of reasons relating to how the checks are currently configured and what they are looking at, which meant the problem went unnoticed for longer than any of us would have liked."
+		},
+		{
+			"part": "fix",
+			"text": "We reissued the full chain and deployed it at 08:15 UTC. Since Thursday the renewal job walks every certificate in the chain rather than the leaf alone, and it fails loudly if it finds one it cannot renew."
+		},
+		{
+			"part": "detection",
+			"text": "A synthetic check now handshakes directly against the origin every five minutes, bypassing the CDN, and expiry alerting fires on the earliest expiry in the chain at 30, 14 and 3 days.",
+			"thin": "We will watch certificates more closely from now on."
+		}
+	]
+}

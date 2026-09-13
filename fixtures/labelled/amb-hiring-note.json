@@ -1,0 +1,23 @@
+{
+	"id": "amb-hiring-note",
+	"accepts": ["internal-note", "essay"],
+	"lang": "fr",
+	"note": "une note d'équipe qui défend une position. Utilisée seulement pour la sélection du type.",
+	"sections": [
+		{
+			"text": "À partir de ce mois-ci, on arrête l'exercice technique à la maison et on le remplace par deux heures de pair programming sur notre propre code."
+		},
+		{
+			"text": "Le prétexte affiché de l'exercice à la maison, c'est l'équité : tout le monde a le même énoncé, tout le monde a le même temps. En pratique, tout le monde n'a pas les mêmes soirées."
+		},
+		{
+			"text": "Un exercice de quatre heures ne teste pas le même candidat selon qu'il a des enfants, un autre emploi, ou ni l'un ni l'autre. On mesure une disponibilité et on l'appelle une compétence."
+		},
+		{
+			"text": "On peut nous répondre que le pair programming favorise ceux qui parlent bien sous pression, et c'est vrai. Mais c'est un biais qu'on peut voir et corriger pendant l'entretien, contrairement à celui qu'on ne voit pas."
+		},
+		{
+			"text": "Concrètement : si vous faites passer des entretiens, prenez le créneau de deux heures dans le planning partagé, et lisez la grille avant votre premier."
+		}
+	]
+}

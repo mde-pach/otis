@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { checkFaithfulness, formattingOnly, plain, restates } from "../reword";
+import { checkFaithfulness, formattingOnly, plain } from "../reword";
 
 const ORIGINAL =
 	"p99 went from 180ms to 410ms in the week after we shipped the read-through cache.";
@@ -36,7 +36,41 @@ describe("the gate", () => {
 	test("a rewrite that keeps almost nothing is not a shortening", () => {
 		const check = checkFaithfulness(ORIGINAL, "Things got slower.");
 		expect(check.passed).toBe(false);
-		expect(check.reason).toContain("rewriting");
+	});
+
+	test("a shortening may only use words the sentence already contains", () => {
+		// found by the evaluation: this passed every gate there used to be, because
+		// it keeps most of the words and adds no number — and still says something
+		// the writer never said
+		const check = checkFaithfulness(
+			"If you enqueue jobs, drop the priority argument.",
+			"If you enqueue jobs, drop the and it cost us the quarter",
+		);
+		expect(check.passed).toBe(false);
+		expect(check.addedWords).toContain("quarter");
+		expect(check.reason).toContain("puts words in your mouth");
+	});
+
+	test("and deleting words is still allowed, which is the point", () => {
+		const check = checkFaithfulness(
+			"If you enqueue jobs, drop the priority argument, which is ignored now.",
+			"If you enqueue jobs, drop the priority argument.",
+		);
+		expect(check.passed).toBe(true);
+		expect(check.addedWords).toEqual([]);
+	});
+
+	test("an accent or a capital is not a new word", () => {
+		const check = checkFaithfulness(
+			"Les sociétés de notation maintenaient de fausses notations pour leurs clients.",
+			"Les sociétés maintenaient de fausses notations.",
+		);
+		expect(check.passed).toBe(true);
+	});
+
+	test("saying a word twice that you said once is putting one in", () => {
+		const check = checkFaithfulness("The cache was the problem.", "The cache was the the problem.");
+		expect(check.addedWords).toEqual(["the"]);
 	});
 
 	test("a faithful reordering is not punished for moving words", () => {
@@ -82,34 +116,5 @@ describe("formatting is not rewriting", () => {
 
 	test("plain strips the marks and leaves the words", () => {
 		expect(plain("## A `heading` with **bold**")).toBe("A heading with bold");
-	});
-});
-
-describe("saying again what you already said", () => {
-	const NOTES = `C'est également le cas pour la crise du milieu immobilier et bancaire de 2008.
-
-* les investissements sans règles quant aux fonds garantis disponibles ont entraîné une crise à l'échelle mondiale
-* les sociétés de notation, indépendantes mais soumises au marché, maintiennent de fausses notations pour conserver leurs clients`;
-
-	test("a paraphrase of your own section is caught, accents and all", () => {
-		expect(
-			restates(
-				"Prenez 2008 : les investissements sans regles sur les fonds garantis ont declenche une crise mondiale.",
-				NOTES,
-			),
-		).toBe(true);
-	});
-
-	test("something the notes never say is not a restatement", () => {
-		expect(
-			restates(
-				"Une autorité n'a de valeur que si elle peut sanctionner, et rien ici ne dit qui sanctionne.",
-				NOTES,
-			),
-		).toBe(false);
-	});
-
-	test("a heading is too short to accuse of anything", () => {
-		expect(restates("## La crise de 2008", NOTES)).toBe(false);
 	});
 });

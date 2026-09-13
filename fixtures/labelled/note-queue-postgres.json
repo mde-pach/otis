@@ -1,0 +1,31 @@
+{
+	"id": "note-queue-postgres",
+	"kind": "internal-note",
+	"lang": "en",
+	"note": "complete internal note",
+	"sections": [
+		{
+			"part": "change",
+			"text": "The job queue is Postgres-backed now instead of Redis. Same enqueue API, same worker code, same retry semantics.",
+			"thin": "We have made a number of fairly substantial changes to the way the background job processing side of things works, which should have a generally positive effect on the overall reliability of that part of the platform going forward."
+		},
+		{
+			"part": "state",
+			"text": "Live in production since Thursday 09:00. Redis is still running but nothing writes to it; we will turn it off on the 28th.",
+			"thin": "It is mostly rolled out."
+		},
+		{
+			"part": "action",
+			"text": "If you enqueue jobs, drop the priority argument — it is ignored now and the parameter disappears next week.",
+			"thin": "There are a couple of small things to be aware of on your side."
+		},
+		{
+			"part": "action",
+			"text": "If you are on call, watch the jobs_pending gauge rather than the Redis list length. The old panel is already showing zero and that is expected."
+		},
+		{
+			"part": "why",
+			"text": "We were paying for two sources of truth, and we lost jobs whenever Redis evicted under memory pressure — four times in the last quarter, twice silently."
+		}
+	]
+}

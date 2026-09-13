@@ -227,28 +227,9 @@ button {
 	color: var(--cy);
 }
 
-.md [data-kind="written"] {
-	color: var(--am);
-}
-
-/* shaded by how far it reached past what the notes support */
-.md [data-kind="written"][data-reach="low"] {
-	color: var(--am-loud);
-	border-bottom: 1px dotted rgba(255, 154, 60, 0.7);
-}
-
 .md [data-run].lit {
 	background: var(--lit);
 	color: var(--lit-ink);
-}
-
-.md [data-kind="written"].lit {
-	background: rgba(240, 160, 75, 0.2);
-	color: var(--am);
-}
-
-.md [data-kind="written"][data-reach="low"].lit {
-	color: var(--am-loud);
 }
 
 /* the article is text you can take away, not a thing you have to retype */
@@ -284,19 +265,19 @@ button {
 }
 
 /*
- * One arrangement, whole: what it leads with, why, and the piece it would make.
- * Nothing here is behind a hover — choosing the shape of your article is a
- * thing you should be able to read.
+ * One kind of piece, described. What is on the card comes out of the pattern
+ * file, so it reads the same on every document: you are choosing a shape, not
+ * looking at a small copy of the result.
  */
 .shape {
 	flex: 1 1 0;
 	min-width: 180px;
-	max-height: min(196px, 26vh);
+	max-height: min(172px, 24vh);
 	overflow-y: auto;
 	overscroll-behavior: contain;
 	display: flex;
 	flex-direction: column;
-	gap: 3px;
+	gap: 6px;
 	text-align: left;
 	padding: 9px 11px 10px;
 	border: 1px solid var(--line);
@@ -316,6 +297,11 @@ button {
 	background: rgba(79, 201, 236, 0.06);
 }
 
+.shape[aria-busy="true"] {
+	opacity: 0.55;
+}
+
+/* the name of the kind, which is the name of its file */
 .shape .nm {
 	font-family: var(--mono);
 	font-size: 0.56rem;
@@ -328,72 +314,60 @@ button {
 	color: var(--cy);
 }
 
-/* its own reason, in its own words */
+/* what this kind of piece does — the file's own line, not about your notes */
+.shape .does {
+	font-size: 0.78rem;
+	line-height: 1.4;
+	color: var(--ink-2);
+}
+
+/* its parts, in the order it puts them. Dashed ones the piece can go without. */
+.shape .parts {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 3px 4px;
+}
+
+.shape .parts em {
+	font-family: var(--mono);
+	font-style: normal;
+	font-size: 0.58rem;
+	letter-spacing: 0.02em;
+	color: var(--ink-3);
+	border: 1px solid var(--line);
+	border-radius: 2px;
+	padding: 1px 4px;
+	white-space: nowrap;
+}
+
+.shape .parts em.opt {
+	border-style: dashed;
+	opacity: 0.7;
+}
+
+.shape[aria-current="true"] .parts em {
+	color: var(--ink-2);
+	border-color: var(--line-2);
+}
+
+.shape .parts s {
+	text-decoration: none;
+	font-size: 0.55rem;
+	color: var(--line-2);
+}
+
+/* the one line on the card that is about your notes: why this kind, for these */
 .shape .why {
-	font-size: 0.76rem;
+	font-size: 0.72rem;
 	line-height: 1.45;
 	color: var(--ink-3);
-	padding-bottom: 5px;
-	border-bottom: 1px solid var(--line);
-	margin-bottom: 4px;
+	padding-top: 5px;
+	border-top: 1px solid var(--line);
 }
 
 .shape[aria-current="true"] .why {
 	color: var(--ink-2);
-}
-
-.shape .skel,
-.shape .cut {
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-}
-
-/* your sections, in that order; the number is where each one sits in your notes */
-.shape .ln {
-	display: flex;
-	gap: 7px;
-	font-size: 0.74rem;
-	line-height: 1.4;
-	color: var(--ink-3);
-}
-
-.shape[aria-current="true"] .ln {
-	color: var(--ink-2);
-}
-
-.shape .ln b {
-	flex: none;
-	width: 2ch;
-	text-align: right;
-	font-family: var(--mono);
-	font-size: 0.58rem;
-	font-weight: 400;
-	color: var(--line-2);
-}
-
-.shape[aria-current="true"] .ln b {
-	color: var(--cy);
-}
-
-.shape .cut {
-	margin-top: 7px;
-	padding-top: 6px;
-	border-top: 1px solid var(--line);
-}
-
-.shape .cut .lab {
-	font-family: var(--mono);
-	font-size: 0.5rem;
-	letter-spacing: 0.14em;
-	text-transform: uppercase;
-	color: var(--am);
-	padding-bottom: 2px;
-}
-
-.shape .cut .ln,
-.shape .cut .ln b {
-	color: #47677a;
 }
 
 /* the two have to be told apart at a glance, and never read as one word */
@@ -429,6 +403,75 @@ button {
 	width: 100%;
 	height: 100%;
 	overflow: visible;
+}
+
+/*
+ * The spine: which part of this kind of piece each of your sections is serving,
+ * marked where that part begins. It is the one thing the tool is never wrong
+ * about, and it is how you catch a section standing in for a part it is not.
+ */
+.gutter .slot {
+	position: absolute;
+	left: 0;
+	right: 0;
+	text-align: center;
+	font-family: var(--mono);
+	font-size: 0.48rem;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--line-2);
+	pointer-events: none;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	padding: 0 3px;
+}
+
+/*
+ * A part of this kind of piece your sections do not cover. The words are the
+ * pattern file's, printed as they are written there — the tool is asking you,
+ * in the gutter, and writing nothing into either pane.
+ *
+ * Amber is a part nothing was placed in. Cyan is a part something was placed
+ * in that does not do its job — a cost with no figure, a state with no date.
+ */
+.gutter .ask {
+	position: absolute;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 6;
+	width: min(300px, 40vw);
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 5px 7px;
+	border-left: 2px solid var(--am);
+	background: rgba(240, 160, 75, 0.07);
+	border-radius: 0 2px 2px 0;
+	pointer-events: none;
+}
+
+.gutter .ask[data-kind="thin"] {
+	border-left-color: var(--cy);
+	background: rgba(79, 201, 236, 0.07);
+}
+
+.gutter .ask .p {
+	font-family: var(--mono);
+	font-size: 0.5rem;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	color: var(--am);
+}
+
+.gutter .ask[data-kind="thin"] .p {
+	color: var(--cy);
+}
+
+.gutter .ask .q {
+	font-size: 0.68rem;
+	line-height: 1.35;
+	color: var(--ink-3);
 }
 
 /*
@@ -846,11 +889,6 @@ button:focus-visible,
 
 .key .k-written {
 	color: var(--am);
-}
-
-.key .k-low {
-	color: var(--am-loud);
-	border-bottom: 1px dotted rgba(255, 154, 60, 0.7);
 }
 
 .key .k-out {

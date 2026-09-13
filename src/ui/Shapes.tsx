@@ -1,17 +1,18 @@
 import { For, Show } from "solid-js";
-import { setShape, shapes, skeletonOf, state } from "./state";
+import { kindOf, setShape, shapes, state } from "./state";
 
 /**
- * Choosing the shape of the piece.
+ * Choosing the kind of piece.
  *
- * A run comes back with two or three arrangements, not one, and each is laid
- * out here in full: what it leads with, why it is in that order, and the piece
- * it would make — every section by its opening words, numbered by where it sits
- * in your notes, with anything it would leave out said plainly.
+ * A card is a pattern: one kind, one arrangement, one card. What it shows comes
+ * out of the pattern file and nowhere else — the name of the kind, what that
+ * kind of piece does, and its parts in the order it puts them, dashed where the
+ * piece can go without one. It reads the same on every document, because it is
+ * describing a shape and not previewing a result.
  *
- * Nothing is behind a hover and nothing is abbreviated to a symbol. You are
- * picking the shape of your article; you should be able to read all three and
- * say which one you want.
+ * The one line that is about you is why this kind was picked for these notes.
+ * Choosing a card that has not been organised yet asks once and keeps what
+ * comes back, so going back to one is free.
  */
 export function Shapes() {
 	return (
@@ -19,40 +20,33 @@ export function Shapes() {
 			<div class="shapes">
 				<For each={shapes()}>
 					{(one, n) => {
-						const plan = () => skeletonOf(one);
+						const kind = () => kindOf(one);
 						return (
 							<button
 								type="button"
 								class="shape"
 								aria-current={state.doc.shape === n()}
+								aria-busy={state.doc.shape === n() && state.busy()}
 								onClick={() => void setShape(n())}
 							>
-								<span class="nm">{one.name}</span>
-								<Show when={one.because}>
-									<span class="why">{one.because}</span>
+								<span class="nm">{kind()?.id ?? one.patternId}</span>
+								<Show when={kind()?.does}>
+									<span class="does">{kind()?.does}</span>
 								</Show>
-								<span class="skel">
-									<For each={plan().order}>
-										{(line) => (
-											<span class="ln">
-												<b>{line.n}</b>
-												{line.text}
-											</span>
+								<span class="parts">
+									<For each={kind()?.parts ?? []}>
+										{(part, at) => (
+											<>
+												<Show when={at() > 0}>
+													<s>›</s>
+												</Show>
+												<em classList={{ opt: !part.required }}>{part.id}</em>
+											</>
 										)}
 									</For>
 								</span>
-								<Show when={plan().out.length}>
-									<span class="cut">
-										<span class="lab">leaves out</span>
-										<For each={plan().out}>
-											{(line) => (
-												<span class="ln">
-													<b>{line.n}</b>
-													{line.text}
-												</span>
-											)}
-										</For>
-									</span>
+								<Show when={one.because}>
+									<span class="why">{one.because}</span>
 								</Show>
 							</button>
 						);

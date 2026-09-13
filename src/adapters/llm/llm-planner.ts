@@ -1,135 +1,143 @@
 /**
- * Asking for a plan.
+ * Asking the model the two questions it is allowed to be asked.
  *
- * The model is never asked for an article. It is asked where the writer's own
- * segments should go, which run long, and what the piece is missing — and it
- * answers in indices. The only text it may return is in `written`, which the
- * writer sees in a different colour for as long as it survives.
+ * Neither of them is "write an article", and neither is "arrange this". The
+ * first is which kinds of piece these notes are; the second, for one kind, is
+ * which part each of the writer's sections belongs to. The second answer has a
+ * vocabulary the size of the pattern file, so it can be checked by a program
+ * rather than trusted — which is the only reason a model is near this text.
  *
- * Nothing it returns is trusted. Every index is resolved against the segments,
- * duplicates are dropped, shortenings that fail the faithfulness gate are
- * discarded here rather than rendered and withdrawn.
+ * The order is never asked for. It is the pattern's, and it is computed.
  */
 
-import type { Planner, PlanRequest } from "../../core/ports";
-import { checkFaithfulness, formattingOnly, restates } from "../../core/reword";
-import type { Confidence, Plan, Segment, Shape } from "../../core/types";
-import { askJson, type LlmConfig } from "./claude-client";
+import { check, type Pattern, type Placement, read, say } from "../../core/pattern";
+import type { Pick, PickRequest, Placed, PlaceRequest, Planner } from "../../core/ports";
+import { checkFaithfulness, formattingOnly } from "../../core/reword";
+import type { Segment } from "../../core/types";
+import { askJson, askOnce, type LlmConfig } from "./claude-client";
 
-const SYSTEM = `You arrange a writer's own sentences into an article. You are not writing their article.
+const PICK = `You are given a writer's notes and a shelf of kinds of piece. Say which three kinds these notes could become.
 
-You are given their text as numbered segments, what they said they are making, and a short reference note about that kind of writing.
+Return JSON: {"picks": [{"kind": "<id from the shelf>", "because": "<one sentence>"}, ...]}
 
-A segment is one section of their document, exactly as they separated it. Each one is laid out on its own in the article, so ordering them is the whole of the structure. There is no paragraph to think about.
+Three picks, best first. "kind" must be an id from the shelf, exactly as written. "because" says, to the writer, what in their notes makes this kind fit — one sentence, in the language their notes are written in, naming something that is actually in them.
 
-Return, as JSON:
-- "shapes": two or three ARRANGEMENTS of their sections, each a genuinely different article. Each is {"name": "...", "at": [...], "because": "..."}. "name" is three or four words for what that arrangement is, in the language of the notes — say what it leads with, not what kind of document it is. "at" has one entry per segment, in order: the position it takes in that arrangement, or null to leave it out; positions are integers you choose and only their order matters. "because" is one sentence on why that order.
-  The FIRST shape is the one you would publish. The others must differ in what they lead with or what they leave out — three names for the same order is not an answer. If the notes only support one order, return one shape and say so in its "because".
-- "format": {segmentIndex: markdown} for segments that would read better with formatting. THE WORDS MUST BE IDENTICAL. You may add **bold**, *italic*, \`code\`, a list marker or a heading marker. Changing, adding or removing a single word here is a mistake.
-- "short": {segmentIndex: text} for segments that run long. Fewer words, same claims. Every number, unit, name and identifier must survive exactly. If you cannot shorten one without losing something, leave it out of this object.
-- "written": the parts the piece needs that the notes do not contain. Each is {"after": segmentIndex, "md": "...", "confidence": "high" | "low", "because": "..."}. Use "low" when you inferred beyond what the notes support. "because" says, to the writer, what was missing.
-  This is for what is MISSING. If a segment already makes the point, do not write it again in your own words — that makes the piece say the same thing twice. A summary, a recap, a restatement or a tidier version of something already in the notes is not a gap; a transition, a definition, a consequence, a counter-argument or a conclusion the notes never reach may be.
-
-Rules you must not break:
-- Never put the writer's words in "written" and never put your words in "format" or "short".
-- Do not impose sections. A heading is only ever a "written" run, and only when the piece genuinely needs one — most do not.
-- Leaving the order alone is a legitimate plan. So is writing nothing.
-- Write in the language the notes are written in.
+Do not offer a kind the notes cannot support just to reach three. Two is a fine answer. One is a fine answer.
 
 Reply with JSON only.`;
 
-/** One arrangement, resolved against the real segments and never trusted. */
-function order(raw: unknown, size: number, fallback: string): Shape {
-	const entry = (raw ?? {}) as Partial<Shape>;
-	const at: (number | null)[] = Array.from({ length: size }, () => null);
-	const taken = new Set<number>();
-	const given = Array.isArray(entry.at) ? entry.at : [];
-	given.slice(0, size).forEach((position, index) => {
-		const n = Number(position);
-		if (!Number.isFinite(n) || taken.has(n)) return;
-		taken.add(n);
-		at[index] = n;
-	});
-	// an arrangement that placed nothing is not one; fall back to their order
-	if (!at.some((position) => position !== null)) {
-		for (let i = 0; i < size; i++) at[i] = i;
-	}
-	return {
-		name: String(entry.name ?? "").trim() || fallback,
-		at,
-		because: String(entry.because ?? "").trim(),
-	};
+const PLACE = `You sort a writer's own sections into the parts of one kind of piece. You are not writing, reordering or summarising anything.
+
+You are given their sections, numbered, and the parts of one kind of piece. For every section, say which part it belongs to, or null if the piece is better without it.
+
+Return JSON:
+- "at": {"<section number>": "<part id>" or null} — one entry for every section you were given, no exceptions.
+- "format": {"<section number>": "<markdown>"} for sections that would read better with formatting. THE WORDS MUST BE IDENTICAL. You may add **bold**, *italic*, \`code\`, a list marker or a heading marker. Changing, adding or removing a single word here is a mistake.
+- "short": {"<section number>": "<text>"} for sections that run long. You may only DELETE words: every word in your answer must already be in that section, and every number, unit, name and identifier that survives must be exact. Do not rephrase, do not join two ideas with a word of your own. If a section cannot be shortened by deleting alone, leave it out.
+
+Rules:
+- A part id must come from the list you were given. Do not invent one.
+- Parts marked "one" hold at most one section. Parts marked "many" hold as many as belong there.
+- A part with nothing to put in it stays empty. Do not stretch a section to cover it, and do not write anything to fill it.
+- Never put your own words in "format" or "short".
+
+Reply with JSON only.`;
+
+function listing(segments: Segment[]): string {
+	return segments.map((s) => `${s.index}: ${s.text.replace(/\s+/g, " ")}`).join("\n");
 }
 
-function clean(value: unknown, segments: Segment[], basis: string): Plan {
-	const raw = (value ?? {}) as Partial<Plan>;
-	const size = segments.length;
+function parts(pattern: Pattern): string {
+	return pattern.parts
+		.map((part) => `${part.id} (${part.many ? "many" : "one"}): ${part.does}`)
+		.join("\n");
+}
 
-	const offered = Array.isArray(raw.shapes) ? raw.shapes.slice(0, 4) : [];
-	const shapes: Shape[] = offered.map((one, n) => order(one, size, `arrangement ${n + 1}`));
-	// nothing usable came back: their own order is a legitimate article
-	if (shapes.length === 0) {
-		shapes.push({
-			name: "as you wrote it",
-			at: Array.from({ length: size }, (_, i) => i),
-			because: "nothing came back to arrange, so this is your order",
-		});
-	}
+interface Wording {
+	format: Record<number, string>;
+	short: Record<number, string>;
+}
 
+/** Wording, each field gated by the check that belongs to it. */
+function wording(raw: unknown, segments: Segment[]): Wording {
+	const said = (raw ?? {}) as { format?: unknown; short?: unknown };
 	const format: Record<number, string> = {};
-	for (const [key, md] of Object.entries(raw.format ?? {})) {
+	for (const [key, md] of Object.entries((said.format ?? {}) as Record<string, unknown>)) {
 		const index = Number(key);
 		const source = segments[index];
 		if (!source || typeof md !== "string") continue;
 		// silently discard anything that changed a word while claiming to format
 		if (formattingOnly(source.text, md)) format[index] = md;
 	}
-
 	const short: Record<number, string> = {};
-	for (const [key, text] of Object.entries(raw.short ?? {})) {
+	for (const [key, text] of Object.entries((said.short ?? {}) as Record<string, unknown>)) {
 		const index = Number(key);
 		const source = segments[index];
 		if (!source || typeof text !== "string") continue;
 		if (checkFaithfulness(source.text, text).passed) short[index] = text;
 	}
-
-	const written = (Array.isArray(raw.written) ? raw.written : [])
-		.map((item) => {
-			const after = Number((item as { after?: unknown })?.after);
-			const md = String((item as { md?: unknown })?.md ?? "").trim();
-			const confidence: Confidence =
-				(item as { confidence?: unknown })?.confidence === "low" ? "low" : "high";
-			const because = String((item as { because?: unknown })?.because ?? "").trim();
-			return { after, md, confidence, because };
-		})
-		// a paraphrase of the writer's own section is not a gap, whatever it claims
-		.filter(
-			(item) =>
-				item.md.length > 0 && segments[item.after] !== undefined && !restates(item.md, basis),
-		);
-
-	return { basis, shapes, format, short, written };
+	return { format, short };
 }
 
 export function createLlmPlanner(config: LlmConfig): Planner {
 	return {
-		async plan(request: PlanRequest): Promise<Plan> {
-			const { segments, brief, pattern, notes } = request;
-			if (segments.length === 0) {
-				return { basis: notes, shapes: [], format: {}, short: {}, written: [] };
+		async pick(request: PickRequest): Promise<Pick[]> {
+			const { segments, brief, shelf, notes } = request;
+			if (segments.length === 0) return [];
+
+			return askJson<Pick[]>(config, {
+				system: PICK,
+				user: `The shelf:\n${shelf}\n\nWhat they said they are making:\n${brief || "(they have not said)"}\n\nTheir notes:\n${notes.slice(0, 12000)}`,
+				maxTokens: 700,
+				validate: (value) => {
+					const said = (value ?? {}) as { picks?: unknown };
+					const offered = Array.isArray(said.picks) ? said.picks : [];
+					const seen = new Set<string>();
+					const picks: Pick[] = [];
+					for (const one of offered) {
+						const patternId = String((one as { kind?: unknown })?.kind ?? "").trim();
+						// a kind that is not on the shelf is not a kind
+						if (!patternId || seen.has(patternId) || !shelf.includes(`${patternId}:`)) continue;
+						seen.add(patternId);
+						picks.push({
+							patternId,
+							because: String((one as { because?: unknown })?.because ?? "").trim(),
+						});
+					}
+					if (picks.length === 0) throw new Error("no kind from the shelf came back");
+					return picks.slice(0, 3);
+				},
+			});
+		},
+
+		async place(request: PlaceRequest): Promise<Placed> {
+			const { segments, brief, pattern } = request;
+			const count = segments.length;
+			const empty: Placement = Array.from({ length: count }, () => null);
+			if (count === 0) return { placement: empty, format: {}, short: {}, violations: [] };
+
+			const user = `The kind: ${pattern.id} — ${pattern.does}\n\nIts parts, in order:\n${parts(pattern)}\n\nWhat they said they are making:\n${brief || "(they have not said)"}\n\nTheir sections:\n${listing(segments)}`;
+
+			let answer = (await askOnce(config, { system: PLACE, user })) as { at?: unknown };
+			let violations = check(answer?.at, pattern, count);
+
+			// one re-ask, with the violations named. A model that cannot answer the
+			// shape twice will not on the third try, and their own order is a
+			// legitimate article — so the fallback is not a failure state.
+			if (violations.length > 0) {
+				const retried = (await askOnce(config, {
+					system: PLACE,
+					user: `${user}\n\nYour previous answer could not be used:\n${violations.map(say).join("\n")}\nAnswer again, for every section.`,
+				})) as { at?: unknown };
+				const left = check(retried?.at, pattern, count);
+				if (left.length === 0) {
+					answer = retried;
+					violations = [];
+				}
 			}
 
-			const listing = segments.map((s) => `${s.index}: ${s.text.replace(/\s+/g, " ")}`).join("\n");
-
-			// Always the whole plan, whatever the dial says. The writer's reach
-			// filters it at render time, so moving the dial costs nothing and they
-			// can see all four readings of one request.
-			return askJson<Plan>(config, {
-				system: SYSTEM,
-				user: `What they are making:\n${brief || "(they have not said — keep close to what they wrote)"}\n\nReference note for this kind of writing:\n${pattern}\n\nTheir segments:\n${listing}`,
-				maxTokens: 3000,
-				validate: (value) => clean(value, segments, notes),
-			});
+			const placement = violations.length === 0 ? read(answer?.at, pattern, count) : empty;
+			return { placement, ...wording(answer, segments), violations: violations.map(say) };
 		},
 	};
 }
