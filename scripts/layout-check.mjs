@@ -85,13 +85,41 @@ for (const size of SIZES) {
 	page.on("pageerror", (error) => errors.push(String(error)));
 	await page.goto(SITE, { waitUntil: "networkidle" });
 
-	await page.evaluate((text) => {
+	// A REAL paste, not textContent. Setting textContent is the one way to put
+	// this document in that a person never uses, and it is why a pasted document
+	// once arrived with every line break gone: the browser answers a paste with
+	// <div>s, and textContent reads those back as one unbroken string.
+	await page.click(".notes");
+	await page.evaluate(async (text) => {
 		const host = document.querySelector(".notes");
-		host.textContent = text;
-		host.dispatchEvent(new InputEvent("input", { bubbles: true }));
-		host.dispatchEvent(new FocusEvent("blur"));
+		host.focus();
+		const carried = new DataTransfer();
+		carried.setData("text/plain", text);
+		host.dispatchEvent(
+			new ClipboardEvent("paste", { clipboardData: carried, bubbles: true, cancelable: true }),
+		);
 	}, document_);
+	await page.waitForTimeout(200);
+	if (!(await page.evaluate(() => document.querySelector(".notes").textContent.length))) {
+		await page.click(".notes");
+		await page.keyboard.insertText(document_);
+	}
+	await page.evaluate(() => document.querySelector(".notes").blur());
 	await page.waitForTimeout(700);
+
+	// what the tool is working from has to be what was pasted, breaks and all
+	const kept = await page.evaluate(
+		(text) => ({
+			lines: document.querySelector(".notes").textContent.split("\n").length,
+			want: text.split("\n").length,
+		}),
+		document_,
+	);
+	check(
+		"a pasted document keeps its line breaks",
+		kept.lines === kept.want,
+		`${kept.lines} lines of ${kept.want}`,
+	);
 
 	// the capsule is the only chrome: it must be reachable without scrolling
 	const capsule = await page.evaluate(() => {
@@ -143,7 +171,7 @@ for (const size of SIZES) {
 		threads: document.querySelectorAll(".gutter path").length,
 		notesNodes: document.querySelector(".notes").childNodes.length,
 	}));
-	check("every segment reaches the article", article.runs > 20, `${article.runs} runs`);
+	check("every section reaches the article", article.runs > 20, `${article.runs} runs`);
 	check(
 		"the notes stay one text node, never split into elements",
 		article.notesNodes <= 1,
