@@ -216,13 +216,6 @@ button {
 		color 0.12s;
 }
 
-/* a sentence lit inside a paragraph keeps its corners on every wrapped line */
-.md span[data-run] {
-	box-decoration-break: clone;
-	-webkit-box-decoration-break: clone;
-	padding: 1px 0;
-}
-
 .md [data-kind="reworded"] {
 	color: var(--cy);
 }
@@ -249,6 +242,210 @@ button {
 
 .md [data-kind="written"][data-reach="low"].lit {
 	color: var(--am-loud);
+}
+
+/* what a shortening actually did, under the run it did it to */
+.md .was {
+	font-family: var(--mono);
+	font-size: 0.7rem;
+	line-height: 1.75;
+	color: var(--ink-3);
+	margin: -10px 0 16px;
+	padding-left: 11px;
+	border-left: 1px solid var(--line-2);
+	cursor: default;
+}
+
+/* the two have to be told apart at a glance, and never read as one word */
+[data-op="del"] {
+	color: var(--ink-3);
+	background: rgba(255, 154, 60, 0.09);
+	text-decoration: line-through;
+	text-decoration-color: rgba(255, 154, 60, 0.6);
+	border-radius: 2px;
+	padding: 1px 2px;
+	margin: 0 1px;
+}
+
+[data-op="ins"] {
+	color: var(--cy);
+	background: rgba(79, 201, 236, 0.1);
+	border-radius: 2px;
+	padding: 1px 2px;
+	margin: 0 1px;
+}
+
+/* ---------------------------------------------------------------- proposal */
+.rev {
+	position: absolute;
+	inset: 0;
+	z-index: 8;
+	display: flex;
+	justify-content: center;
+	align-items: flex-start;
+	padding: 28px 20px 96px;
+	background: rgba(4, 12, 18, 0.72);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+}
+
+.rev-in {
+	width: min(660px, 100%);
+	background: var(--cap);
+	border: 1px solid var(--line-2);
+	border-radius: 10px;
+	padding: 20px 22px 18px;
+	box-shadow: 0 26px 60px -18px rgba(0, 0, 0, 0.8);
+}
+
+.rev-top {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	padding-bottom: 14px;
+	border-bottom: 1px solid var(--line);
+}
+
+.rev-top .ph {
+	padding: 0;
+	border: none;
+}
+
+.rev-say {
+	color: var(--ink-2);
+	font-size: 0.94rem;
+	line-height: 1.5;
+}
+
+.rev section {
+	padding: 15px 0;
+	border-bottom: 1px solid var(--line);
+}
+
+.rev section.off {
+	opacity: 0.45;
+}
+
+.rev h3 {
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+	margin: 0 0 9px;
+	font-family: var(--mono);
+	font-size: 0.56rem;
+	font-weight: 500;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+	color: var(--ink-3);
+}
+
+.rev .item {
+	display: flex;
+	align-items: baseline;
+	gap: 12px;
+	padding: 7px 0;
+}
+
+.rev .item.off {
+	opacity: 0.4;
+}
+
+.rev .item > p {
+	flex: 1 1 auto;
+	margin: 0;
+	font-size: 0.92rem;
+	line-height: 1.55;
+}
+
+.rev .item .why {
+	flex: none;
+	width: 100%;
+	font-family: var(--mono);
+	font-size: 0.56rem;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--ink-3);
+	padding-bottom: 4px;
+}
+
+.rev .item {
+	flex-wrap: wrap;
+}
+
+.rev .draft {
+	color: var(--am);
+}
+
+.rev .draft[data-reach="low"] {
+	color: var(--am-loud);
+	border-bottom: 1px dotted rgba(255, 154, 60, 0.7);
+}
+
+.rev .out {
+	color: #47677a;
+}
+
+.rev .was {
+	font-family: var(--mono);
+	font-size: 0.76rem;
+	line-height: 1.7;
+	color: var(--ink-2);
+}
+
+.rev .ord {
+	margin: 0;
+	padding-left: 20px;
+	color: var(--ink-3);
+	font-size: 0.88rem;
+	line-height: 1.5;
+}
+
+.rev .ord li {
+	padding: 2px 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.rev .ord li.moved {
+	color: var(--ink);
+}
+
+.no {
+	flex: none;
+	font-family: var(--mono);
+	font-size: 0.56rem;
+	letter-spacing: 0.11em;
+	text-transform: uppercase;
+	color: var(--ink-3);
+	border: 1px solid var(--line-2);
+	border-radius: 99px;
+	padding: 3px 10px;
+}
+
+.no:hover {
+	border-color: var(--cy);
+	color: var(--cy);
+}
+
+.no[aria-pressed="true"] {
+	border-color: var(--am);
+	color: var(--am);
+}
+
+.rev-do {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	padding-top: 16px;
+}
+
+.rev-none {
+	margin: 14px 0 0;
+	color: var(--ink-3);
+	font-family: var(--mono);
+	font-size: 0.6rem;
+	letter-spacing: 0.05em;
 }
 
 /* ----------------------------------------------------------------- gutter */
