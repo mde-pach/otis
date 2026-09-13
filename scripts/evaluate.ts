@@ -228,12 +228,11 @@ function hollow(): void {
 		1,
 		`  ${declared.length} pairs`,
 	);
-	// One alarm, on note-design-review's `state`: "Starting with next week's work."
-	// The corpus calls that section complete and the check disagrees — and the
-	// check has a point, because that is not a date anyone can plan around. It is
-	// left standing rather than edited away, because rewriting the evidence after
-	// seeing the result is how a measure stops meaning anything. The floor allows
-	// one; a second would be worth looking at.
+	// An alarm here is the check disagreeing with a label, and the disagreement is
+	// worth reading before it is worth fixing: a section the corpus calls complete
+	// may still owe a figure. Whichever way it is settled, settle it by changing
+	// the check or the label on its merits — editing the fixture until the number
+	// goes green is how a measure stops meaning anything. Each one is printed.
 	report(
 		"and writing the corpus calls complete is left alone",
 		1 - alarms.length / LABELLED.length,
@@ -501,14 +500,13 @@ async function live(planner: Planner): Promise<void> {
 	});
 
 	const hit = cutResults.filter((c) => c.asked.includes(c.part));
-	// A documented ceiling, not a target. Two runs of this corpus gave 75.9% and
-	// 74.1%, so the floor is set below both: it is there to catch a regression,
-	// not to be scraped past on a good day.
+	// A ceiling, not a target: the floor sits below what this corpus measures, so
+	// it catches a regression rather than being scraped past on a good day. Raise
+	// it only after several runs say the ceiling itself moved.
 	//
 	// Every miss is the same structural error — the part immediately after the
-	// hole slides into it. Asking the model the complementary question ("does
-	// this document cover X?") on the thirteen misses recovered four of them and
-	// invented four more, so the fix is not another question to the model.
+	// hole slides into it — and the misses are printed below rather than
+	// summarised, because that is the part worth looking at.
 	report(
 		"gap recall: a part you cut is a part it asks for",
 		hit.length / cutResults.length,
