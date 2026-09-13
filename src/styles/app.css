@@ -216,6 +216,13 @@ button {
 		color 0.12s;
 }
 
+/* a sentence lit inside a paragraph keeps its corners on every wrapped line */
+.md span[data-run] {
+	box-decoration-break: clone;
+	-webkit-box-decoration-break: clone;
+	padding: 1px 0;
+}
+
 .md [data-kind="reworded"] {
 	color: var(--cy);
 }

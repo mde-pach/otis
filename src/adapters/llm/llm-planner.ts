@@ -20,6 +20,8 @@ const SYSTEM = `You arrange a writer's own sentences into an article. You are no
 
 You are given their text as numbered segments, what they said they are making, and a short reference note about that kind of writing.
 
+A segment is one sentence, or one line they already made a unit of — a bullet, a heading, a fenced block. The [P n] marker is the paragraph it was typed in. Segments from the same paragraph that end up next to each other are set back down as one paragraph, so leaving a paragraph's sentences in their order costs nothing and moving one out of it is a visible change. Move a sentence only when the piece is better for it.
+
 Return, as JSON:
 - "at": one entry per segment, in order — the position it should take in the article, or null to leave it out. Positions are integers you choose; only their order matters.
 - "format": {segmentIndex: markdown} for segments that would read better with formatting. THE WORDS MUST BE IDENTICAL. You may add **bold**, *italic*, \`code\`, a list marker or a heading marker. Changing, adding or removing a single word here is a mistake.
@@ -92,7 +94,9 @@ export function createLlmPlanner(config: LlmConfig): Planner {
 				return { basis: notes, at: [], format: {}, short: {}, written: [], because: "" };
 			}
 
-			const listing = segments.map((s) => `${s.index}: ${s.text.replace(/\s+/g, " ")}`).join("\n");
+			const listing = segments
+				.map((s) => `${s.index} [P${s.block + 1}]: ${s.text.replace(/\s+/g, " ")}`)
+				.join("\n");
 
 			// Always the whole plan, whatever the dial says. The writer's reach
 			// filters it at render time, so moving the dial costs nothing and they
