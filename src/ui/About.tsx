@@ -65,6 +65,13 @@ export function About() {
 						into either. Below 880px the gutter is gone, and the card with it.
 					</p>
 					<p>
+						Down the gutter runs the <strong>spine</strong>: the part of the chosen kind that each
+						of your sections is serving, marked where that part begins. It is worth reading. Otis is
+						right about three times in four when it says a part is missing — a neighbouring section
+						tends to slide into the hole — but it is never wrong about what is filling a part, so
+						the spine is how you catch a paragraph standing in for one it is not.
+					</p>
+					<p>
 						<strong>copy markdown</strong>, at the top of the article, puts the whole thing on your
 						clipboard as plain Markdown. Your words, no marks, ready to paste wherever you are
 						publishing.
@@ -83,10 +90,17 @@ export function About() {
 							<span>your sentence, fewer words — no number or claim changed</span>
 						</div>
 						<div>
-							<span class="sw k-written">a question, in the gutter</span>
+							<span class="sw k-written">a question, in amber</span>
 							<span>
 								a part of this kind of piece that none of your sections went into. The words are the
 								pattern file's; nothing is written into the article
+							</span>
+						</div>
+						<div>
+							<span class="sw k-reworded">a question, in cyan</span>
+							<span>
+								a part something <em>was</em> put in, that does not do its job — a cost with no
+								figure, a state with no date. Only parts that owe something checkable are asked
 							</span>
 						</div>
 						<div>
