@@ -127,3 +127,69 @@ export function emptyDoc(id: string): Doc {
 		updatedAt: Date.now(),
 	};
 }
+
+/**
+ * What came out of storage, made safe to render.
+ *
+ * The stored document is a record of a model that has changed shape more than
+ * once, and a document saved by an older version must never be able to take the
+ * app down — that costs the writer their text, which is the one thing this tool
+ * promises to keep. So a plan from before arrangements existed is carried
+ * forward into one, and anything that cannot be read at all is dropped while
+ * the notes stay.
+ */
+function revivePlan(raw: unknown): Plan | null {
+	if (!raw || typeof raw !== "object") return null;
+	const said = raw as Record<string, unknown>;
+	if (typeof said.basis !== "string") return null;
+
+	const offered = Array.isArray(said.shapes) ? said.shapes : [];
+	const shapes: Shape[] = offered
+		.filter((one): one is Shape => Boolean(one) && Array.isArray((one as Shape).at))
+		.map((one) => ({
+			name: typeof one.name === "string" ? one.name : "arrangement",
+			at: one.at,
+			because: typeof one.because === "string" ? one.because : "",
+		}));
+
+	// a plan from before a run came back with more than one arrangement
+	if (shapes.length === 0 && Array.isArray(said.at)) {
+		shapes.push({
+			name: "as it was",
+			at: said.at as (number | null)[],
+			because: typeof said.because === "string" ? said.because : "",
+		});
+	}
+	if (shapes.length === 0) return null;
+
+	const map = (value: unknown): Record<number, string> =>
+		value && typeof value === "object" ? (value as Record<number, string>) : {};
+
+	return {
+		basis: said.basis,
+		shapes,
+		format: map(said.format),
+		short: map(said.short),
+		written: Array.isArray(said.written) ? (said.written as Written[]) : [],
+	};
+}
+
+export function reviveDoc(id: string, saved: unknown): Doc {
+	const base = emptyDoc(id);
+	if (!saved || typeof saved !== "object") return base;
+	const said = saved as Record<string, unknown>;
+	const reach = [0, 1, 2, 3].includes(said.reach as number) ? (said.reach as Reach) : 0;
+
+	return {
+		...base,
+		notes: typeof said.notes === "string" ? said.notes : "",
+		brief: typeof said.brief === "string" ? said.brief : "",
+		reach,
+		patternId: typeof said.patternId === "string" ? said.patternId : base.patternId,
+		plan: revivePlan(said.plan),
+		shape: Number.isInteger(said.shape) ? Math.max(0, said.shape as number) : 0,
+		edits:
+			said.edits && typeof said.edits === "object" ? (said.edits as Record<string, string>) : {},
+		updatedAt: typeof said.updatedAt === "number" ? said.updatedAt : Date.now(),
+	};
+}
